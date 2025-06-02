@@ -1,49 +1,53 @@
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 
-/* ------------------------------------------------------------------ */
-/*  Locale-aware “short date + short time” formatter, 24-hour clock   */
-/* ------------------------------------------------------------------ */
-const dtFormatter = new Intl.DateTimeFormat(undefined, {
+/* ────────────────────────────────────────────────────────────────── */
+/*  Format for display – browser locale, 24-hour clock               */
+const dtFmt = new Intl.DateTimeFormat(undefined, {
   dateStyle: "short",
   timeStyle: "short",
-  hour12   : false,
+  hour12: false,
 });
-const fmt = (iso) => dtFormatter.format(new Date(iso));
+const fmt = (iso) => dtFmt.format(new Date(iso));
+
+/* convert ISO→input value and input→ISO --------------------------- */
+const isoToLocalInput = (iso) => {
+  const d = new Date(iso);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+};
+const localInputToIso = (val) => new Date(val).toISOString();
+/* ────────────────────────────────────────────────────────────────── */
 
 export default function TaskTable({ rows, onUpdate, onDelete }) {
-  /* edit / expand / delete state */
-  const [editingId, setEdit]   = useState(null);
-  const [form,      setForm]   = useState({});
+  const [editingId, setEdit] = useState(null);
+  const [form, setForm] = useState({});
   const [expandedId, setExpanded] = useState(null);
-  const [deleteId,   setDeleteId]  = useState(null);
+  const [deleteId, setDeleteId] = useState(null);
 
-  /* start editing -------------------------------------------------- */
   function beginEdit(t) {
     setForm({
-      name       : t.name,
-      customer   : t.customer ?? "",
-      startedAt  : t.startedAt.slice(0, 16),
-      finishedAt : t.finishedAt ? t.finishedAt.slice(0, 16) : "",
-      notes      : t.notes ?? "",
+      name: t.name,
+      customer: t.customer ?? "",
+      startedAt: isoToLocalInput(t.startedAt),
+      finishedAt: t.finishedAt ? isoToLocalInput(t.finishedAt) : "",
+      notes: t.notes ?? "",
     });
     setEdit(t.id);
   }
 
-  /* save changes --------------------------------------------------- */
   async function save(e) {
     e.preventDefault();
     await onUpdate(editingId, {
-      name       : form.name,
-      customer   : form.customer,
-      startedAt  : form.startedAt,
-      finishedAt : form.finishedAt || null,
-      notes      : form.notes.trim() || null,
+      name: form.name,
+      customer: form.customer,
+      startedAt: localInputToIso(form.startedAt),
+      finishedAt: form.finishedAt ? localInputToIso(form.finishedAt) : null,
+      notes: form.notes.trim() || null,
     });
     setEdit(null);
   }
 
-  /* ─────────────────────────── UI ──────────────────────────────── */
   return (
     <>
       <section className="card">
