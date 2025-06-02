@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Fragment } from "react";
 import Header from "../../components/Header.jsx";
 import {
   loadConfig,
@@ -8,19 +8,22 @@ import {
 } from "../../config.js";
 
 export default function ConfigPage() {
-  /* global settings */
+  /* ─── global settings ─────────────────────────────────────────── */
   const init = loadConfig();
-  const [theme, setTheme] = useState(init.theme ?? "technical");
-  const [mode, setMode] = useState(init.mode ?? "auto");
-  const [title, setTitle] = useState(init.appTitle ?? "Project-Tracker");
-  const [saved, setSaved] = useState(false);
+  const [theme, setTheme]   = useState(init.theme    ?? "technical");
+  const [mode,  setMode]    = useState(init.mode     ?? "auto");
+  const [title, setTitle]   = useState(init.appTitle ?? "Project-Tracker");
+  const [saved, setSaved]   = useState(false);
 
-  /* project CRUD */
-  const [projects, setProjects] = useState([]);
-  const [newProj, setNewProj] = useState("");
+  /* ─── project CRUD ────────────────────────────────────────────── */
+  const [projects,  setProjects]  = useState([]);
+  const [newProj,   setNewProj]   = useState("");
 
   const [editingId, setEditingId] = useState(null);
-  const [editName, setEditName] = useState("");
+  const [editName,  setEditName]  = useState("");
+
+  /* modal for delete */
+  const [deleteId,  setDeleteId]  = useState(null);
 
   /* initial load */
   useEffect(() => { reloadProj(); }, []);
@@ -34,9 +37,9 @@ export default function ConfigPage() {
   async function addProject() {
     if (!newProj.trim()) return;
     const r = await fetch("/api/projects", {
-      method: "POST",
+      method : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newProj.trim() }),
+      body   : JSON.stringify({ name: newProj.trim() }),
     });
     if (r.ok) {
       setNewProj("");
@@ -48,9 +51,9 @@ export default function ConfigPage() {
   async function renameProject(id, name) {
     if (!name.trim()) return;
     const r = await fetch(`/api/projects/${id}`, {
-      method: "PUT",
+      method : "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim() }),
+      body   : JSON.stringify({ name: name.trim() }),
     });
     if (r.ok) {
       setEditingId(null);
@@ -59,8 +62,7 @@ export default function ConfigPage() {
     }
   }
 
-  async function deleteProject(id) {
-    if (!window.confirm("Delete this project? All its tasks will be removed.")) return;
+  async function confirmDeleteProject(id) {
     const r = await fetch(`/api/projects/${id}`, { method: "DELETE" });
     if (r.ok || r.status === 204) {
       reloadProj();
@@ -69,13 +71,18 @@ export default function ConfigPage() {
   }
 
   async function save() {
-    await saveConfig({ theme, mode, appTitle: title.trim() || "Project-Tracker" });
+    await saveConfig({
+      theme,
+      mode,
+      appTitle: title.trim() || "Project-Tracker",
+    });
     document.documentElement.setAttribute("data-theme", effectiveTheme(theme));
     document.documentElement.setAttribute("data-mode",  effectiveMode(mode));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
 
+  /* ─── UI ──────────────────────────────────────────────────────── */
   return (
     <>
       <Header />
@@ -83,11 +90,11 @@ export default function ConfigPage() {
         <section className="card config-wrap" style={{ maxWidth: 600 }}>
           <h2>Configuration</h2>
 
-          {/* title */}
+          {/* title --------------------------------------------------- */}
           <h3>Application title</h3>
           <input value={title} onChange={(e) => setTitle(e.target.value)} />
 
-          {/* theme */}
+          {/* theme --------------------------------------------------- */}
           <h3 style={{ marginTop: "1.2rem" }}>Theme</h3>
           <label style={{ marginRight: "1rem" }}>
             <input
@@ -108,7 +115,7 @@ export default function ConfigPage() {
             /> Jira-like
           </label>
 
-          {/* colour-scheme */}
+          {/* colour-scheme ------------------------------------------ */}
           <h3 style={{ marginTop: "1.2rem" }}>Colour-scheme mode</h3>
           {["light", "dark", "auto"].map((m) => (
             <label key={m} style={{ marginRight: "1rem" }}>
@@ -122,7 +129,7 @@ export default function ConfigPage() {
             </label>
           ))}
 
-          {/* project list */}
+          {/* projects ------------------------------------------------ */}
           <h3 style={{ marginTop: "1.2rem" }}>Projects</h3>
           {projects.length === 0 ? (
             <p><em>No projects yet</em></p>
@@ -132,10 +139,10 @@ export default function ConfigPage() {
                 <li
                   key={p.id}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: ".4rem",
-                    marginBottom: ".35rem",
+                    display      : "flex",
+                    alignItems   : "center",
+                    gap          : ".4rem",
+                    marginBottom : ".35rem",
                   }}
                 >
                   {editingId === p.id ? (
@@ -170,11 +177,11 @@ export default function ConfigPage() {
                           setEditName(p.name);
                         }}
                       >
-                        Rename
+                        Edit
                       </button>
                       <button
                         className="btn-light"
-                        onClick={() => deleteProject(p.id)}
+                        onClick={() => setDeleteId(p.id)}
                       >
                         ×
                       </button>
@@ -185,7 +192,7 @@ export default function ConfigPage() {
             </ul>
           )}
 
-          {/* add new project */}
+          {/* add new project ---------------------------------------- */}
           <div style={{ display: "flex", gap: ".6rem" }}>
             <input
               value={newProj}
@@ -202,7 +209,7 @@ export default function ConfigPage() {
             </button>
           </div>
 
-          {/* save global config */}
+          {/* save global config ------------------------------------- */}
           <div style={{ marginTop: "1.5rem" }}>
             <button className="btn" onClick={save}>Save config</button>
             {saved && (
@@ -213,6 +220,35 @@ export default function ConfigPage() {
           </div>
         </section>
       </main>
+
+      {/* ─── delete-confirm modal ────────────────────────────────── */}
+      {deleteId !== null && (
+        <div className="modal-backdrop">
+          <div className="modal-box">
+            <p style={{ marginTop: 0 }}>
+              Delete this project?<br />
+              <small>All its tasks will be removed.</small>
+            </p>
+            <div style={{ marginTop: "1rem", display: "flex", gap: ".6rem", justifyContent: "center" }}>
+              <button
+                className="btn"
+                onClick={async () => {
+                  await confirmDeleteProject(deleteId);
+                  setDeleteId(null);
+                }}
+              >
+                Delete
+              </button>
+              <button
+                className="btn-light"
+                onClick={() => setDeleteId(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
