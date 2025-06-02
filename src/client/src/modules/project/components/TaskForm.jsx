@@ -3,33 +3,34 @@ import React, { useState, useEffect } from "react";
 /* ─── helpers ────────────────────────────────────────────────────── */
 const HALF_HOUR_MS = 30 * 60 * 1000;
 
-function roundDownToHalfHour(d) {
-  return new Date(Math.floor(d.getTime() / HALF_HOUR_MS) * HALF_HOUR_MS);
-}
-function roundUpToHalfHour(d) {
-  return new Date(Math.ceil(d.getTime() / HALF_HOUR_MS) * HALF_HOUR_MS);
-}
-/* convert Date → `yyyy-mm-ddThh:mm` local-time string expected by
-   <input type="datetime-local"> (timezone-offset neutral) */
-function toLocalInputValue(date) {
+const roundDown = (d) =>
+  new Date(Math.floor(d.getTime() / HALF_HOUR_MS) * HALF_HOUR_MS);
+const roundUp = (d) =>
+  new Date(Math.ceil(d.getTime() / HALF_HOUR_MS) * HALF_HOUR_MS);
+
+/* convert Date → `yyyy-mm-ddThh:mm` for <input type="datetime-local"> */
+const toLocalInputValue = (date) => {
   const z = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-              .toISOString();
+    .toISOString();
   return z.slice(0, 16);
-}
+};
+
+/* convert `yyyy-mm-ddThh:mm` (local) → ISO string with Z */
+const localInputToIso = (val) => new Date(val).toISOString();
 
 export default function TaskForm({ projectId, onSave }) {
   /* ─── state ───────────────────────────────────────────────────── */
-  const [name,     setName]     = useState("");
+  const [name, setName] = useState("");
   const [customer, setCustomer] = useState("");
-  const [start,    setStart]    = useState("");
-  const [end,      setEnd]      = useState("");
-  const [notes,    setNotes]    = useState("");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [notes, setNotes] = useState("");
 
-  /* pre-populate start/end when the form first renders */
+  /* pre-populate start/end on first render */
   useEffect(() => {
     const now = new Date();
-    setStart(toLocalInputValue(roundDownToHalfHour(now)));
-    setEnd  (toLocalInputValue(roundUpToHalfHour(now)));
+    setStart(toLocalInputValue(roundDown(now)));
+    setEnd(toLocalInputValue(roundUp(now)));
   }, []);
 
   /* ─── handlers ─────────────────────────────────────────────────── */
@@ -38,16 +39,17 @@ export default function TaskForm({ projectId, onSave }) {
     await onSave(projectId, {
       name,
       customer,
-      startedAt : start,
-      finishedAt: end || null,
-      notes     : notes.trim() || null,
+      startedAt: localInputToIso(start),
+      finishedAt: end ? localInputToIso(end) : null,
+      notes: notes.trim() || null,
     });
     /* reset fields */
-    setName(""); setCustomer(""); setNotes("");
-    /* keep start/end anchored to “now” after save */
+    setName("");
+    setCustomer("");
+    setNotes("");
     const now = new Date();
-    setStart(toLocalInputValue(roundDownToHalfHour(now)));
-    setEnd  (toLocalInputValue(roundUpToHalfHour(now)));
+    setStart(toLocalInputValue(roundDown(now)));
+    setEnd(toLocalInputValue(roundUp(now)));
   }
 
   /* ─── UI ───────────────────────────────────────────────────────── */
