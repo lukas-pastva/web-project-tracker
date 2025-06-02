@@ -1,5 +1,5 @@
 {
-  "name": "web-baby-server",
+  "name": "web-project-server",
   "version": "1.0.0",
   "type": "module",
   "main": "src/index.js",

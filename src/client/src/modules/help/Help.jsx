@@ -8,10 +8,10 @@ export default function HelpPage() {
 
       <main>
         <section className="card" style={{ maxWidth: "850px" }}>
-          <h2 style={{ marginTop: 0 }}>Welcome to Web-Baby 👶🍼</h2>
+          <h2 style={{ marginTop: 0 }}>Welcome to Web-Project 👶🍼</h2>
 
           <p>
-            Web-Baby is a tiny <strong>React + Express</strong> app that lets
+            Web-Project is a tiny <strong>React + Express</strong> app that lets
             new parents quickly log feeds, visualise intake, and track weight –
             all in a single container you can self-host anywhere.
           </p>

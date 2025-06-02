@@ -33,4 +33,4 @@ app.get("*", (_req, res) =>
   res.sendFile(path.join(__dirname, "../public/index.html"))
 );
 
-app.listen(port, () => console.log(`Web-Baby listening on ${port}`));
+app.listen(port, () => console.log(`Web-Project listening on ${port}`));

@@ -1,28 +1,18 @@
 import { DataTypes } from "sequelize";
 import db from "../../db.js";
 
-export const Project = db.define(
-  "project",
+/* Single-row application configuration */
+const AppConfig = db.define(
+  "app_config",
   {
-    id  : { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    name: { type: DataTypes.STRING(128), allowNull: false, unique: true },
-  },
-  { timestamps: true }
-);
-
-export const Task = db.define(
-  "task",
-  {
-    id         : { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    projectId  : { type: DataTypes.INTEGER, allowNull: false },
-    name       : { type: DataTypes.STRING(256), allowNull: false },
-    customer   : { type: DataTypes.STRING(128) },
-    startedAt  : { type: DataTypes.DATE, allowNull: false },
-    finishedAt : { type: DataTypes.DATE },
-    notes      : { type: DataTypes.TEXT },
+    id      : { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
+    theme   : { type: DataTypes.ENUM("technical", "jira-like"), allowNull: false, defaultValue: "technical" },
+    mode    : { type: DataTypes.ENUM("light", "dark", "auto"), allowNull: false, defaultValue: "auto" },
+    appTitle: { type: DataTypes.STRING(128), allowNull: false, defaultValue: "Project-Tracker" },
   },
   { timestamps: false }
 );
 
-Project.hasMany(Task, { foreignKey: "projectId", onDelete: "CASCADE" });
-Task.belongsTo(Project, { foreignKey: "projectId" });
+/* Export both default *and* named for flexibility */
+export { AppConfig };
+export default AppConfig;
