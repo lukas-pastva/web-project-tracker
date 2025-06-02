@@ -2,36 +2,43 @@ import React, { useState, useEffect } from "react";
 
 /* ─── helpers ────────────────────────────────────────────────────── */
 const HALF_HOUR_MS = 30 * 60 * 1000;
-
 const roundDown = (d) =>
   new Date(Math.floor(d.getTime() / HALF_HOUR_MS) * HALF_HOUR_MS);
 const roundUp = (d) =>
   new Date(Math.ceil(d.getTime() / HALF_HOUR_MS) * HALF_HOUR_MS);
 
-/* convert Date → `yyyy-mm-ddThh:mm` for <input type="datetime-local"> */
-const toLocalInputValue = (date) => {
+/* date ↔︎ input conversions */
+const toInput = (date) => {
   const z = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-    .toISOString();
+              .toISOString();
   return z.slice(0, 16);
 };
+const fromInput = (val) => new Date(val).toISOString();
 
-/* convert `yyyy-mm-ddThh:mm` (local) → ISO string with Z */
-const localInputToIso = (val) => new Date(val).toISOString();
-
-export default function TaskForm({ projectId, onSave }) {
+export default function TaskForm({ projectId, onSave, customers, tasks }) {
   /* ─── state ───────────────────────────────────────────────────── */
-  const [name, setName] = useState("");
+  const [name,     setName]     = useState("");
   const [customer, setCustomer] = useState("");
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
-  const [notes, setNotes] = useState("");
+  const [start,    setStart]    = useState("");
+  const [end,      setEnd]      = useState("");
+  const [notes,    setNotes]    = useState("");
 
-  /* pre-populate start/end on first render */
+  /* pre-populate start/end once */
   useEffect(() => {
     const now = new Date();
-    setStart(toLocalInputValue(roundDown(now)));
-    setEnd(toLocalInputValue(roundUp(now)));
+    setStart(toInput(roundDown(now)));
+    setEnd  (toInput(roundUp(now)));
   }, []);
+
+  /* auto-fill name/notes when existing customer is chosen */
+  useEffect(() => {
+    if (!customer) return;
+    const last = [...tasks].reverse().find(t => t.customer === customer);
+    if (last) {
+      if (!name)  setName(last.name);
+      if (!notes) setNotes(last.notes ?? "");
+    }
+  }, [customer, tasks]); // runs when customer changes or tasks list updates
 
   /* ─── handlers ─────────────────────────────────────────────────── */
   async function submit(e) {
@@ -39,17 +46,15 @@ export default function TaskForm({ projectId, onSave }) {
     await onSave(projectId, {
       name,
       customer,
-      startedAt: localInputToIso(start),
-      finishedAt: end ? localInputToIso(end) : null,
-      notes: notes.trim() || null,
+      startedAt : fromInput(start),
+      finishedAt: end ? fromInput(end) : null,
+      notes     : notes.trim() || null,
     });
-    /* reset fields */
-    setName("");
-    setCustomer("");
-    setNotes("");
+    /* reset state */
+    setName(""); setCustomer(""); setNotes("");
     const now = new Date();
-    setStart(toLocalInputValue(roundDown(now)));
-    setEnd(toLocalInputValue(roundUp(now)));
+    setStart(toInput(roundDown(now)));
+    setEnd  (toInput(roundUp(now)));
   }
 
   /* ─── UI ───────────────────────────────────────────────────────── */
@@ -66,11 +71,19 @@ export default function TaskForm({ projectId, onSave }) {
           placeholder="Task name"
           required
         />
+
+        {/* customer with datalist suggestions */}
         <input
+          list="customers"
           value={customer}
           onChange={(e) => setCustomer(e.target.value)}
           placeholder="Customer"
         />
+        <datalist id="customers">
+          {customers.map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
 
         <label>
           Start&nbsp;
@@ -91,7 +104,6 @@ export default function TaskForm({ projectId, onSave }) {
           />
         </label>
 
-        {/* Markdown-enabled notes */}
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
