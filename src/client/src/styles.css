@@ -1,0 +1,162 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap");
+
+/* ─────────── theme vars (accent) */
+:root {
+  --accent        : #6b7280;   /* technical: neutral grey-6 */
+  --accent-contr  : #ffffff;
+  --header-bg     : #374151;   /* grey-8 */
+}
+/* jira-like palette (atlassian blues) */
+[data-theme="jira-like"] {
+  --accent    : #0c66e4;       /* Atlassian blue-500 */
+  --header-bg : #092957;       /* dark blue */
+}
+
+/* ─────────────────────────── colour-scheme vars  */
+:root[data-mode="light"] {
+  --bg-page : #f9fafb;
+  --bg-card : #ffffff;
+  --fg-text : #0f172a;
+  --row-alt : #f5f7fa;
+  --border  : #d2d8e0;
+}
+:root[data-mode="dark"] {
+  --bg-page : #111827;
+  --bg-card : #1f2937;
+  --fg-text : #e5e7eb;
+  --row-alt : #1e293b;
+  --border  : #374151;
+}
+
+/* ─────────────────────────── base */
+html { font-size: 95%; }
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  background: var(--bg-page);
+  color: var(--fg-text);
+}
+
+/* ─────────────────────────── header */
+header.mod-header{
+  background:var(--header-bg);
+  color:#fff;
+  padding:.75rem 1rem;
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+}
+header.mod-header h1{margin:0;font-size:1.4rem}
+
+/* centred nav */
+header.mod-header nav.nav-center{
+  flex:1;
+  display:flex;
+  justify-content:center;
+  gap:.5rem;
+  flex-wrap:wrap;
+}
+header.mod-header nav a{
+  display:inline-block;
+  padding:.45rem .9rem;
+  border:1px solid var(--accent);
+  border-radius:4px;
+  background:transparent;
+  color:var(--accent);
+  font-size:1rem;
+  text-decoration:none;
+  transition:background .15s,color .15s;
+}
+header.mod-header nav a:hover{
+  background:var(--accent);
+  color:var(--accent-contr);
+}
+header.mod-header nav a.active,
+header.mod-header nav a.active:hover{
+  background:var(--accent);
+  color:var(--accent-contr);
+  font-weight:600;
+}
+
+/* mode-toggle button */
+.mode-toggle{
+  background:none;
+  border:none;
+  font-size:1.35rem;
+  cursor:pointer;
+  line-height:1;
+  padding:0;
+  color:var(--accent-contr);
+  transition:transform .15s;
+}
+.mode-toggle:hover{ transform: scale(1.15); }
+
+/* ─────────────────────────── layout */
+main{padding:1rem}
+.card{
+  background:var(--bg-card);
+  border-radius:8px;
+  padding:1rem 1.5rem;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+  margin-bottom:1.5rem;
+  overflow:visible;
+}
+
+/* buttons / inputs */
+button,input,select{font-size:1rem}
+.btn{
+  background:var(--accent);
+  color:var(--accent-contr);
+  border:none;
+  padding:.4rem .9rem;
+  border-radius:4px;
+  cursor:pointer;
+}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn-light{
+  background:transparent;
+  border:1px solid var(--accent);
+  color:var(--accent);
+  padding:.35rem .8rem;
+  border-radius:4px;
+  cursor:pointer;
+}
+
+/* tables */
+table{width:100%;border-collapse:collapse}
+thead th{border-bottom:2px solid var(--border)}
+th,td{padding:.5rem .6rem;text-align:left;font-size:.95rem}
+tbody tr{border-bottom:1px solid var(--border)}
+tbody tr:nth-child(odd){background:var(--row-alt)}
+
+/* feed icons */
+.feed-icon{font-size:1.25rem;margin-right:.25rem;vertical-align:text-bottom}
+
+/* alerts & spinner */
+.spinner{
+  display:inline-block;width:16px;height:16px;
+  border:2px solid #fff;border-right-color:transparent;
+  border-radius:50%;animation:spin .6s linear infinite;
+  vertical-align:-3px;
+}
+@keyframes spin{100%{transform:rotate(360deg)}}
+.msg-success{
+  margin-left:.6rem;color:var(--accent);font-weight:600;
+  animation:fadeout 2s forwards;
+}
+@keyframes fadeout{0%,90%{opacity:1}100%{opacity:0}}
+
+/* ─────────────────────────── Config page */
+.config-wrap{
+  max-width:800px;          /* was 500px */
+  margin:0;                 /* flush-left */
+}
+.config-types{list-style:none;padding:0;text-align:center}
+.config-types li{display:inline-block;margin:0 .75rem .4rem}
+
+/* mobile tweaks */
+@media(max-width:600px){
+  html{font-size:92%}
+  header.mod-header h1{font-size:1.25rem}
+  .config-wrap{max-width:100%;}          /* still fluid on phones */
+}
