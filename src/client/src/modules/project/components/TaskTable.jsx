@@ -1,23 +1,24 @@
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 
-/* helper – compact locale date/time, 24-hour clock */
-const fmt = (iso) =>
-  new Date(iso).toLocaleString(undefined, {
-    dateStyle: "short",
-    timeStyle: "short",
-    hour12   : false,
-  });
+/* ------------------------------------------------------------------ */
+/*  Locale-aware “short date + short time” formatter, 24-hour clock   */
+/* ------------------------------------------------------------------ */
+const dtFormatter = new Intl.DateTimeFormat(undefined, {
+  dateStyle: "short",
+  timeStyle: "short",
+  hour12   : false,
+});
+const fmt = (iso) => dtFormatter.format(new Date(iso));
 
 export default function TaskTable({ rows, onUpdate, onDelete }) {
-  /* edit + expanded state */
-  const [editingId, setEdit]  = useState(null);
-  const [form,      setForm]  = useState({});
+  /* edit / expand / delete state */
+  const [editingId, setEdit]   = useState(null);
+  const [form,      setForm]   = useState({});
   const [expandedId, setExpanded] = useState(null);
+  const [deleteId,   setDeleteId]  = useState(null);
 
-  /* delete-confirm modal */
-  const [deleteId,  setDeleteId] = useState(null);
-
+  /* start editing -------------------------------------------------- */
   function beginEdit(t) {
     setForm({
       name       : t.name,
@@ -29,6 +30,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     setEdit(t.id);
   }
 
+  /* save changes --------------------------------------------------- */
   async function save(e) {
     e.preventDefault();
     await onUpdate(editingId, {
@@ -41,6 +43,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     setEdit(null);
   }
 
+  /* ─────────────────────────── UI ──────────────────────────────── */
   return (
     <>
       <section className="card">
@@ -183,12 +186,19 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         )}
       </section>
 
-      {/* ─── delete-confirm modal ──────────────────────────────────── */}
+      {/* ─── delete-confirm modal ─────────────────────────────────── */}
       {deleteId !== null && (
         <div className="modal-backdrop">
           <div className="modal-box">
             <p style={{ marginTop: 0 }}>Delete this task?</p>
-            <div style={{ marginTop: "1rem", display: "flex", gap: ".6rem", justifyContent: "center" }}>
+            <div
+              style={{
+                marginTop: "1rem",
+                display: "flex",
+                gap: ".6rem",
+                justifyContent: "center",
+              }}
+            >
               <button
                 className="btn"
                 onClick={async () => {
@@ -198,10 +208,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
               >
                 Delete
               </button>
-              <button
-                className="btn-light"
-                onClick={() => setDeleteId(null)}
-              >
+              <button className="btn-light" onClick={() => setDeleteId(null)}>
                 Cancel
               </button>
             </div>
