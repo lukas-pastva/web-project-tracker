@@ -1,16 +1,18 @@
 import React, { useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 export default function TaskTable({ rows, onUpdate, onDelete }) {
   const [editingId, setEdit] = useState(null);
   const [form, setForm] = useState({});
+  const [expandedId, setExpanded] = useState(null);
 
   function beginEdit(t) {
     setForm({
-      name       : t.name,
-      customer   : t.customer ?? "",
-      startedAt  : t.startedAt.slice(0, 16),
-      finishedAt : t.finishedAt ? t.finishedAt.slice(0, 16) : "",
-      notes      : t.notes ?? "",
+      name: t.name,
+      customer: t.customer ?? "",
+      startedAt: t.startedAt.slice(0, 16),
+      finishedAt: t.finishedAt ? t.finishedAt.slice(0, 16) : "",
+      notes: t.notes ?? "",
     });
     setEdit(t.id);
   }
@@ -18,11 +20,11 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
   async function save(e) {
     e.preventDefault();
     await onUpdate(editingId, {
-      name       : form.name,
-      customer   : form.customer,
-      startedAt  : form.startedAt,
-      finishedAt : form.finishedAt || null,
-      notes      : form.notes.trim() || null,
+      name: form.name,
+      customer: form.customer,
+      startedAt: form.startedAt,
+      finishedAt: form.finishedAt || null,
+      notes: form.notes.trim() || null,
     });
     setEdit(null);
   }
@@ -48,6 +50,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
           <tbody>
             {rows.map((t) => (
               <React.Fragment key={t.id}>
+                {/* main row ------------------------------------------------ */}
                 <tr>
                   <td>{t.name}</td>
                   <td>{t.customer || "—"}</td>
@@ -58,19 +61,38 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                       : "—"}
                   </td>
                   <td>
-                    {t.notes ? t.notes.slice(0, 60) + (t.notes.length > 60 ? "…" : "") : "—"}
+                    {t.notes ? (
+                      <>
+                        {t.notes.slice(0, 60)}
+                        {t.notes.length > 60 && "…"}
+                        <button
+                          className="btn-light"
+                          style={{ marginLeft: ".4rem" }}
+                          onClick={() =>
+                            setExpanded(expandedId === t.id ? null : t.id)
+                          }
+                        >
+                          {expandedId === t.id ? "Hide" : "Show"}
+                        </button>
+                      </>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button className="btn-light" onClick={() => beginEdit(t)}>
                       Edit
                     </button>{" "}
-                    <button className="btn-light" onClick={() => onDelete(t.id)}>
+                    <button
+                      className="btn-light"
+                      onClick={() => onDelete(t.id)}
+                    >
                       ×
                     </button>
                   </td>
                 </tr>
 
-                {/* inline edit row */}
+                {/* inline edit row ---------------------------------------- */}
                 {editingId === t.id && (
                   <tr>
                     <td colSpan={6}>
@@ -130,6 +152,15 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                           Cancel
                         </button>
                       </form>
+                    </td>
+                  </tr>
+                )}
+
+                {/* expanded Markdown row ---------------------------------- */}
+                {expandedId === t.id && t.notes && (
+                  <tr>
+                    <td colSpan={6} style={{ background: "var(--row-alt)" }}>
+                      <ReactMarkdown>{t.notes}</ReactMarkdown>
                     </td>
                   </tr>
                 )}
