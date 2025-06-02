@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 
-/* ────────────────────────────────────────────────────────────────── */
-/*  Format for display – browser locale, 24-hour clock               */
+/* formatter – browser locale, 24-hour clock */
 const dtFmt = new Intl.DateTimeFormat(undefined, {
   dateStyle: "short",
   timeStyle: "short",
@@ -10,28 +9,27 @@ const dtFmt = new Intl.DateTimeFormat(undefined, {
 });
 const fmt = (iso) => dtFmt.format(new Date(iso));
 
-/* convert ISO→input value and input→ISO --------------------------- */
-const isoToLocalInput = (iso) => {
+/* input ↔︎ ISO helpers */
+const isoToInput  = (iso) => {
   const d = new Date(iso);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 16);
 };
-const localInputToIso = (val) => new Date(val).toISOString();
-/* ────────────────────────────────────────────────────────────────── */
+const inputToIso  = (val) => new Date(val).toISOString();
 
-export default function TaskTable({ rows, onUpdate, onDelete }) {
-  const [editingId, setEdit] = useState(null);
-  const [form, setForm] = useState({});
+export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
+  const [editingId, setEdit]   = useState(null);
+  const [form,      setForm]   = useState({});
   const [expandedId, setExpanded] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
+  const [deleteId,   setDeleteId] = useState(null);
 
   function beginEdit(t) {
     setForm({
-      name: t.name,
-      customer: t.customer ?? "",
-      startedAt: isoToLocalInput(t.startedAt),
-      finishedAt: t.finishedAt ? isoToLocalInput(t.finishedAt) : "",
-      notes: t.notes ?? "",
+      name       : t.name,
+      customer   : t.customer ?? "",
+      startedAt  : isoToInput(t.startedAt),
+      finishedAt : t.finishedAt ? isoToInput(t.finishedAt) : "",
+      notes      : t.notes ?? "",
     });
     setEdit(t.id);
   }
@@ -39,11 +37,11 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
   async function save(e) {
     e.preventDefault();
     await onUpdate(editingId, {
-      name: form.name,
-      customer: form.customer,
-      startedAt: localInputToIso(form.startedAt),
-      finishedAt: form.finishedAt ? localInputToIso(form.finishedAt) : null,
-      notes: form.notes.trim() || null,
+      name       : form.name,
+      customer   : form.customer,
+      startedAt  : inputToIso(form.startedAt),
+      finishedAt : form.finishedAt ? inputToIso(form.finishedAt) : null,
+      notes      : form.notes.trim() || null,
     });
     setEdit(null);
   }
@@ -131,12 +129,21 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                             }
                             required
                           />
+
+                          {/* customer with datalist */}
                           <input
+                            list="customers-edit"
                             value={form.customer}
                             onChange={(e) =>
                               setForm({ ...form, customer: e.target.value })
                             }
                           />
+                          <datalist id="customers-edit">
+                            {customers.map((c) => (
+                              <option key={c} value={c} />
+                            ))}
+                          </datalist>
+
                           <input
                             type="datetime-local"
                             value={form.startedAt}
@@ -175,7 +182,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     </tr>
                   )}
 
-                  {/* expanded Markdown row -------------------------------- */}
+                  {/* expanded Markdown row ------------------------------- */}
                   {expandedId === t.id && t.notes && (
                     <tr>
                       <td colSpan={6} style={{ background: "var(--row-alt)" }}>
