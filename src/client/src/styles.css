@@ -12,7 +12,7 @@
   --header-bg : #092957;       /* dark blue */
 }
 
-/* ─────────────────────────── colour-scheme vars  */
+/* ─────────────────────────── colour-scheme vars */
 :root[data-mode="light"] {
   --bg-page : #f9fafb;
   --bg-card : #ffffff;
@@ -128,7 +128,7 @@ thead th{border-bottom:2px solid var(--border)}
 th,td{padding:.5rem .6rem;text-align:left;font-size:.95rem}
 tbody tr{border-bottom:1px solid var(--border)}
 tbody tr:nth-child(odd){background:var(--row-alt)}
-/* NEW: explicit even-row colour for clear striping */
+/* explicit even-row colour for clear striping */
 tbody tr:nth-child(even){background:var(--bg-card)}
 
 /* feed icons */
@@ -160,19 +160,27 @@ tbody tr:nth-child(even){background:var(--bg-card)}
 @media(max-width:600px){
   html{font-size:92%}
   header.mod-header h1{font-size:1.25rem}
-  .config-wrap{max-width:100%;}          /* still fluid on phones */
+  .config-wrap{max-width:100%;}
 }
+
+/* ─────────────────────────── modal ► centred confirm dialog */
 .modal-backdrop{
-  position:fixed;inset:0;
-  background:rgba(0,0,0,.45);
-  display:flex;align-items:center;justify-content:center;
-  z-index:1000;
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,.45);   /* dims the page */
+  z-index:1000;                 /* sits above everything */
 }
 .modal-box{
-  background:var(--bg-card);
+  background:var(--bg-card);    /* opaque dialog */
+  color:var(--fg-text);
   border-radius:8px;
   padding:1.5rem 1.25rem;
-  max-width:340px;width:90%;
-  box-shadow:0 2px 10px rgba(0,0,0,.25);
+  max-width:340px;
+  width:90%;
+  box-shadow:0 2px 12px rgba(0,0,0,.45);
+  z-index:1001;                 /* above backdrop */
   text-align:center;
 }
