@@ -1,11 +1,11 @@
 /* ───────────────────────────────────────────────────────────────────
  * Global app configuration – persisted on the server
- * Only three keys are left: theme, mode, appTitle
+ * Keys: theme, mode, appTitle
  * ─────────────────────────────────────────────────────────────────── */
 
 const DEFAULT = {
   theme   : "technical",        // grey palette
-  mode    : "auto",
+  mode    : "auto",             // light | dark | auto
   appTitle: "Project-Tracker",
 };
 
@@ -21,16 +21,33 @@ export async function initConfig() {
   }
 }
 
-export function loadConfig()          { return CACHE; }
-export const effectiveTheme = (f="technical") => CACHE.theme ?? f;
-export const effectiveMode  = (f="light")     => CACHE.mode  ?? f;
-export const storedMode     = ()              => CACHE.mode  ?? "auto";
+/* plain getters ---------------------------------------------------- */
+export function loadConfig() { return CACHE; }
 
+/* theme: just echo or fall back */
+export const effectiveTheme = (fallback = "technical") =>
+  CACHE.theme ?? fallback;
+
+/* mode: resolve "auto" → system pref                              */
+export function effectiveMode(fallback = "light") {
+  const m = CACHE.mode ?? fallback;
+  if (m === "auto") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+  return m;
+}
+
+/* raw stored value (can be "auto") */
+export const storedMode = () => CACHE.mode ?? "auto";
+
+/* save (merge & persist) ------------------------------------------- */
 export async function saveConfig(partial) {
   CACHE = { ...CACHE, ...partial };
   await fetch("/api/config", {
-    method :"PUT",
-    headers: { "Content-Type":"application/json" },
+    method : "PUT",
+    headers: { "Content-Type": "application/json" },
     body   : JSON.stringify(CACHE),
   });
 }
