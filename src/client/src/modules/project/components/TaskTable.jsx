@@ -1,17 +1,15 @@
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 
-/* ──────────────────────────────────────────────────────────────────
- *  Date-time helpers – browser locale, 24-hour clock
- * ────────────────────────────────────────────────────────────────── */
-const dtFmt = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "short",
-  timeStyle: "short",
-  hour12: false,
-});
-const fmt = (iso) => dtFmt.format(new Date(iso));
+/* browser-locale, 24-hour clock formatter */
+const fmt = (iso) =>
+  new Intl.DateTimeFormat(undefined, {
+    dateStyle: "short",
+    timeStyle: "short",
+    hour12: false,
+  }).format(new Date(iso));
 
-/* <input type="datetime-local"> ⇄ ISO helpers */
+/* helpers for <input type="datetime-local"> */
 const isoToInput = (iso) => {
   const d = new Date(iso);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
@@ -19,15 +17,21 @@ const isoToInput = (iso) => {
 };
 const inputToIso = (val) => new Date(val).toISOString();
 
-/* ────────────────────────────────────────────────────────────────── */
 export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
   const [editingId, setEdit]    = useState(null);
   const [form,      setForm]    = useState({});
   const [expandedId, setExpanded] = useState(null);
   const [deleteId,   setDeleteId] = useState(null);
 
-  /* begin inline edit ------------------------------------------------ */
-  function beginEdit(t) {
+  /* toggle notes for a row (skip if that row is in edit mode) */
+  const toggle = (id) =>
+    editingId === id
+      ? null
+      : setExpanded(expandedId === id ? null : id);
+
+  /* begin inline edit */
+  function beginEdit(e, t) {
+    e.stopPropagation();                 // stop row toggle
     setForm({
       name       : t.name,
       customer   : t.customer ?? "",
@@ -38,7 +42,7 @@ export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
     setEdit(t.id);
   }
 
-  /* save inline edit ------------------------------------------------- */
+  /* save inline edit */
   async function save(e) {
     e.preventDefault();
     await onUpdate(editingId, {
@@ -51,7 +55,6 @@ export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
     setEdit(null);
   }
 
-  /* ─────────────────────────── render ────────────────────────────── */
   return (
     <>
       <section className="card">
@@ -74,53 +77,40 @@ export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
             <tbody>
               {rows.map((t) => (
                 <React.Fragment key={t.id}>
-                  {/* main table row ------------------------------------ */}
-                  <tr>
+                  {/* clickable main row */}
+                  <tr
+                    className="clickable-row"
+                    onClick={() => toggle(t.id)}
+                  >
                     <td>{t.name}</td>
                     <td>{t.customer || "—"}</td>
                     <td>{fmt(t.startedAt)}</td>
                     <td>{t.finishedAt ? fmt(t.finishedAt) : "—"}</td>
-
-                    {/* snippet – small font, hides when expanded */}
                     <td className="notes-snippet">
-                      {t.notes && expandedId !== t.id && (
-                        <span className="snippet-text">
-                          {t.notes.slice(0, 60)}
-                          {t.notes.length > 60 && "…"}
-                        </span>
-                      )}
-                      {t.notes && (
-                        <button
-                          className="btn-light"
-                          style={{ marginLeft: ".4rem" }}
-                          onClick={() =>
-                            setExpanded(expandedId === t.id ? null : t.id)
-                          }
-                        >
-                          {expandedId === t.id ? "Hide" : "Show"}
-                        </button>
-                      )}
-                      {!t.notes && "—"}
+                      {t.notes
+                        ? `${t.notes.slice(0, 60)}${t.notes.length > 60 ? "…" : ""}`
+                        : "—"}
                     </td>
-
-                    {/* edit / delete buttons */}
                     <td style={{ whiteSpace: "nowrap" }}>
                       <button
                         className="btn-light"
-                        onClick={() => beginEdit(t)}
+                        onClick={(e) => beginEdit(e, t)}
                       >
                         Edit
                       </button>{" "}
                       <button
                         className="btn-light"
-                        onClick={() => setDeleteId(t.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteId(t.id);
+                        }}
                       >
                         ×
                       </button>
                     </td>
                   </tr>
 
-                  {/* inline edit row ---------------------------------- */}
+                  {/* inline edit row */}
                   {editingId === t.id && (
                     <tr>
                       <td colSpan={6}>
@@ -140,8 +130,6 @@ export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
                             }
                             required
                           />
-
-                          {/* customer input with suggestions */}
                           <input
                             list="customers-edit"
                             value={form.customer}
@@ -154,7 +142,6 @@ export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
                               <option key={c} value={c} />
                             ))}
                           </datalist>
-
                           <input
                             type="datetime-local"
                             value={form.startedAt}
@@ -193,7 +180,7 @@ export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
                     </tr>
                   )}
 
-                  {/* expanded notes row ------------------------------- */}
+                  {/* expanded notes row */}
                   {expandedId === t.id && t.notes && (
                     <tr>
                       <td colSpan={6} className="notes-full">
@@ -208,19 +195,12 @@ export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
         )}
       </section>
 
-      {/* ─── delete-confirm modal ─────────────────────────────────── */}
+      {/* delete-confirm modal (unchanged) */}
       {deleteId !== null && (
         <div className="modal-backdrop">
           <div className="modal-box">
             <p style={{ marginTop: 0 }}>Delete this task?</p>
-            <div
-              style={{
-                marginTop: "1rem",
-                display: "flex",
-                gap: ".6rem",
-                justifyContent: "center",
-              }}
-            >
+            <div style={{ marginTop: "1rem", display: "flex", gap: ".6rem", justifyContent: "center" }}>
               <button
                 className="btn"
                 onClick={async () => {
