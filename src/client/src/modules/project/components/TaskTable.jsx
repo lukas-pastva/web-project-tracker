@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 /* ─────────────────────────── helpers ──────────────────────────── */
-/* browser-locale, 24-hour time */
 const fmt = (iso) =>
   new Intl.DateTimeFormat(undefined, {
     dateStyle: "short",
@@ -10,7 +9,6 @@ const fmt = (iso) =>
     hour12: false,
   }).format(new Date(iso));
 
-/* ISO ⇄ <input type="datetime-local"> */
 const isoToInput = (iso) => {
   const d = new Date(iso);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
@@ -18,7 +16,6 @@ const isoToInput = (iso) => {
 };
 const inputToIso = (val) => new Date(val).toISOString();
 
-/* duration (h m) or em-dash */
 const duration = (startIso, endIso) => {
   if (!startIso || !endIso) return "—";
   const ms = new Date(endIso) - new Date(startIso);
@@ -29,7 +26,6 @@ const duration = (startIso, endIso) => {
   return `${h}h ${m}m`;
 };
 
-/* truncate helper */
 const cut = (txt, len = 20) =>
   txt.length > len ? txt.slice(0, len) + "…" : txt;
 
@@ -43,7 +39,7 @@ export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
   const toggle = (id) =>
     editingId === id ? null : setExpanded(expandedId === id ? null : id);
 
-  /* start editing -------------------------------------------------- */
+  /* begin editing -------------------------------------------------- */
   function beginEdit(e, t) {
     e.stopPropagation();
     setForm({
@@ -69,7 +65,7 @@ export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
     setEdit(null);
   }
 
-  /* ─────────────────────── render table ────────────────────────── */
+  /* ─────────────────────────── render ──────────────────────────── */
   return (
     <>
       <section className="card">
@@ -93,7 +89,7 @@ export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
             <tbody>
               {rows.map((t) => (
                 <React.Fragment key={t.id}>
-                  {/* main row (clickable) */}
+                  {/* main row (click to toggle) */}
                   <tr className="clickable-row" onClick={() => toggle(t.id)}>
                     <td>{t.name}</td>
                     <td>{t.customer || "—"}</td>
@@ -101,7 +97,13 @@ export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
                     <td>{t.finishedAt ? fmt(t.finishedAt) : "—"}</td>
                     <td>{duration(t.startedAt, t.finishedAt)}</td>
                     <td className="notes-snippet">
-                      {t.notes ? cut(t.notes, 20) : "—"}
+                      {t.notes ? (
+                        <ReactMarkdown components={{ p: "span" }}>
+                          {cut(t.notes, 20)}
+                        </ReactMarkdown>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td style={{ whiteSpace: "nowrap" }}>
                       <button
@@ -212,7 +214,14 @@ export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
         <div className="modal-backdrop">
           <div className="modal-box">
             <p style={{ marginTop: 0 }}>Delete this task?</p>
-            <div style={{ marginTop: "1rem", display: "flex", gap: ".6rem", justifyContent: "center" }}>
+            <div
+              style={{
+                marginTop: "1rem",
+                display: "flex",
+                gap: ".6rem",
+                justifyContent: "center",
+              }}
+            >
               <button
                 className="btn"
                 onClick={async () => {
