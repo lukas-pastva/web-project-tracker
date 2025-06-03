@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 
-/* browser-locale, 24-hour clock formatter */
+/* ─────────────────────────── helpers ──────────────────────────── */
+/* browser-locale, 24-hour time */
 const fmt = (iso) =>
   new Intl.DateTimeFormat(undefined, {
     dateStyle: "short",
@@ -9,7 +10,7 @@ const fmt = (iso) =>
     hour12: false,
   }).format(new Date(iso));
 
-/* helpers for <input type="datetime-local"> */
+/* ISO ⇄ <input type="datetime-local"> */
 const isoToInput = (iso) => {
   const d = new Date(iso);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
@@ -17,44 +18,58 @@ const isoToInput = (iso) => {
 };
 const inputToIso = (val) => new Date(val).toISOString();
 
+/* duration (h m) or em-dash */
+const duration = (startIso, endIso) => {
+  if (!startIso || !endIso) return "—";
+  const ms = new Date(endIso) - new Date(startIso);
+  if (ms <= 0) return "—";
+  const mins = Math.round(ms / 60000);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${h}h ${m}m`;
+};
+
+/* truncate helper */
+const cut = (txt, len = 20) =>
+  txt.length > len ? txt.slice(0, len) + "…" : txt;
+
+/* ─────────────────────────── component ────────────────────────── */
 export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
-  const [editingId, setEdit]    = useState(null);
-  const [form,      setForm]    = useState({});
+  const [editingId, setEdit] = useState(null);
+  const [form, setForm] = useState({});
   const [expandedId, setExpanded] = useState(null);
-  const [deleteId,   setDeleteId] = useState(null);
+  const [deleteId, setDeleteId] = useState(null);
 
-  /* toggle notes for a row (skip if that row is in edit mode) */
   const toggle = (id) =>
-    editingId === id
-      ? null
-      : setExpanded(expandedId === id ? null : id);
+    editingId === id ? null : setExpanded(expandedId === id ? null : id);
 
-  /* begin inline edit */
+  /* start editing -------------------------------------------------- */
   function beginEdit(e, t) {
-    e.stopPropagation();                 // stop row toggle
+    e.stopPropagation();
     setForm({
-      name       : t.name,
-      customer   : t.customer ?? "",
-      startedAt  : isoToInput(t.startedAt),
-      finishedAt : t.finishedAt ? isoToInput(t.finishedAt) : "",
-      notes      : t.notes ?? "",
+      name: t.name,
+      customer: t.customer ?? "",
+      startedAt: isoToInput(t.startedAt),
+      finishedAt: t.finishedAt ? isoToInput(t.finishedAt) : "",
+      notes: t.notes ?? "",
     });
     setEdit(t.id);
   }
 
-  /* save inline edit */
+  /* save edit ------------------------------------------------------ */
   async function save(e) {
     e.preventDefault();
     await onUpdate(editingId, {
-      name       : form.name,
-      customer   : form.customer,
-      startedAt  : inputToIso(form.startedAt),
-      finishedAt : form.finishedAt ? inputToIso(form.finishedAt) : null,
-      notes      : form.notes.trim() || null,
+      name: form.name,
+      customer: form.customer,
+      startedAt: inputToIso(form.startedAt),
+      finishedAt: form.finishedAt ? inputToIso(form.finishedAt) : null,
+      notes: form.notes.trim() || null,
     });
     setEdit(null);
   }
 
+  /* ─────────────────────── render table ────────────────────────── */
   return (
     <>
       <section className="card">
@@ -69,6 +84,7 @@ export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
                 <th>Customer</th>
                 <th>Start</th>
                 <th>End</th>
+                <th>Duration</th>
                 <th>Notes</th>
                 <th></th>
               </tr>
@@ -77,19 +93,15 @@ export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
             <tbody>
               {rows.map((t) => (
                 <React.Fragment key={t.id}>
-                  {/* clickable main row */}
-                  <tr
-                    className="clickable-row"
-                    onClick={() => toggle(t.id)}
-                  >
+                  {/* main row (clickable) */}
+                  <tr className="clickable-row" onClick={() => toggle(t.id)}>
                     <td>{t.name}</td>
                     <td>{t.customer || "—"}</td>
                     <td>{fmt(t.startedAt)}</td>
                     <td>{t.finishedAt ? fmt(t.finishedAt) : "—"}</td>
+                    <td>{duration(t.startedAt, t.finishedAt)}</td>
                     <td className="notes-snippet">
-                      {t.notes
-                        ? `${t.notes.slice(0, 60)}${t.notes.length > 60 ? "…" : ""}`
-                        : "—"}
+                      {t.notes ? cut(t.notes, 20) : "—"}
                     </td>
                     <td style={{ whiteSpace: "nowrap" }}>
                       <button
@@ -113,7 +125,7 @@ export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
                   {/* inline edit row */}
                   {editingId === t.id && (
                     <tr>
-                      <td colSpan={6}>
+                      <td colSpan={7}>
                         <form
                           onSubmit={save}
                           style={{
@@ -183,7 +195,7 @@ export default function TaskTable({ rows, onUpdate, onDelete, customers }) {
                   {/* expanded notes row */}
                   {expandedId === t.id && t.notes && (
                     <tr>
-                      <td colSpan={6} className="notes-full">
+                      <td colSpan={7} className="notes-full">
                         <ReactMarkdown>{t.notes}</ReactMarkdown>
                       </td>
                     </tr>
