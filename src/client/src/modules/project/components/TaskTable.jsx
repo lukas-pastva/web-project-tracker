@@ -30,16 +30,21 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
   const [deleteId,   setDeleteId] = useState(null);
 
   /* contacts cache  (taskId → [contacts]) */
-  const [contacts,    setContacts] = useState({});
-  const [cForm,       setCForm]    = useState({ taskId:null, name:"", email:"", position:"" });
-  const loadContacts  = async (tid) =>
-    setContacts((c) => ({ ...c, [tid]: await api.listContacts(tid).catch(()=>[]) }));
+  const [contacts, setContacts] = useState({});
+  const [cForm,    setCForm]    = useState({ taskId:null, name:"", email:"", position:"" });
+
+  /* FIXED: block-body async function ----------------------------- */
+  const loadContacts = async (tid) => {
+    const list = await api.listContacts(tid).catch(() => []);
+    setContacts((c) => ({ ...c, [tid]: list }));
+  };
 
   /* ensure contacts load when a row is expanded ------------------ */
   useEffect(() => {
     if (expandedId && contacts[expandedId] == null) loadContacts(expandedId);
-  }, [expandedId]);                                                     // eslint-disable-line react-hooks/exhaustive-deps
-
+  }, [expandedId]);
+                   
+  
   /* sorting logic ------------------------------------------------ */
   const [sort, setSort] = useState({ key: "startedAt", asc: true });
   const sortedRows = useMemo(() => {
