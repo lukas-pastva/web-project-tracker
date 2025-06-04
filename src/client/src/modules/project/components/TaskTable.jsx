@@ -1,65 +1,65 @@
-/* src/client/src/modules/project/components/TaskTable.jsx */
 import React, { useState, useMemo, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import api from "../api.js";
 
-/* ─ helpers ─ */
+/* ───────── helpers ───────── */
 const fmt = (iso) =>
   new Intl.DateTimeFormat(undefined, {
     dateStyle: "short",
     timeStyle: "short",
-    hour12: false,
+    hour12   : false,
   }).format(new Date(iso));
 
-const isoToInput = (i) => i?.slice(0, 16);
-const inputToIso = (v) => (v ? new Date(v).toISOString() : null);
-const diffMs = (a, b) => new Date(b) - new Date(a);
-const dur = (ms) =>
+const isoToInput  = (iso) => iso?.slice(0, 16);
+const inputToIso  = (val) => (val ? new Date(val).toISOString() : null);
+
+const diffMs      = (a, b) => new Date(b) - new Date(a);
+const fmtDuration = (ms) =>
   ms == null
     ? "—"
     : `${Math.floor(ms / 3_600_000)}h ${(Math.floor(ms / 60_000) % 60)
         .toString()
         .padStart(2, "0")}m`;
 
-/* derive “Lukas Pastva” from “lukas.pastva@…” */
-const nameFromEmail = (mail) =>
-  mail
-    .split("@")[0]
-    .split(/[._-]+/)
-    .filter(Boolean)
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-    .join(" ");
+/* derive “Lukas Pastva” from “lukas.pastva@company.com” */
+const nameFromEmail = (email = "") =>
+  email.split("@")[0]                 // take part before @
+       .replace(/[_\.]+/g, " ")       // . _ → space
+       .split(" ")
+       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+       .join(" ");
 
+/* ───────── component ───────── */
 export default function TaskTable({ rows, onUpdate, onDelete }) {
-  /* -------- state -------- */
-  const [editingId, setEdit] = useState(null);
-  const [form, setForm] = useState({});
+  /* basic UI state */
+  const [editingId,  setEdit]     = useState(null);
+  const [form,       setForm]     = useState({});
   const [expandedId, setExpanded] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
+  const [deleteId,   setDeleteId] = useState(null);
 
-  /* contacts cache  (taskId → contacts[]) & add-form */
+  /* contacts cache  (taskId → [contacts]) */
   const [contacts, setContacts] = useState({});
-  const [cForm, setCForm] = useState({
-    taskId: null,
-    email: "",
-    name: "",
-    position: "",
+  const [cForm,    setCForm]    = useState({
+    taskId   : null,
+    email    : "",
+    name     : "",
+    position : "",
   });
 
-  /* async loader wrapped in block-body so “await” is legal */
-  const loadContacts = async (tid) => {
-    const list = await api.listContacts(tid).catch(() => []);
-    setContacts((c) => ({ ...c, [tid]: list }));
-  };
+  const loadContacts = async (tid) =>
+    setContacts((c) => ({
+      ...c,
+      [tid]: await api.listContacts(tid).catch(() => []),
+    }));
 
-  /* load contacts when a row is expanded */
+  /* auto-load contacts when row expanded */
   useEffect(() => {
     if (expandedId && contacts[expandedId] == null) loadContacts(expandedId);
-  }, [expandedId]); // eslint-disable-line
+  }, [expandedId]);                                                     // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* -------- sorting -------- */
+  /* sorting logic ------------------------------------------------ */
   const [sort, setSort] = useState({ key: "startedAt", asc: true });
-  const sorted = useMemo(() => {
+  const sortedRows = useMemo(() => {
     const dir = sort.asc ? 1 : -1;
     return [...rows].sort((a, b) => {
       if (sort.key === "duration") {
@@ -67,68 +67,75 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         const dy = diffMs(b.startedAt, b.finishedAt);
         return dx === dy ? 0 : dx > dy ? dir : -dir;
       }
-      const x = a[sort.key],
-        y = b[sort.key];
+      const x = a[sort.key], y = b[sort.key];
       if (x == null && y == null) return 0;
       if (x == null) return -dir;
-      if (y == null) return dir;
+      if (y == null) return  dir;
       return x > y ? dir : -dir;
     });
   }, [rows, sort]);
 
-  /* -------- task edit helpers -------- */
+  /* begin edit --------------------------------------------------- */
   function beginEdit(e, t) {
     e.stopPropagation();
     setForm({
-      name: t.name,
-      customer: t.customer ?? "",
-      startedAt: isoToInput(t.startedAt),
-      finishedAt: t.finishedAt ? isoToInput(t.finishedAt) : "",
-      notes: t.notes ?? "",
+      name       : t.name,
+      customer   : t.customer ?? "",
+      startedAt  : isoToInput(t.startedAt),
+      finishedAt : t.finishedAt ? isoToInput(t.finishedAt) : "",
+      notes      : t.notes ?? "",
     });
     setEdit(t.id);
     setCForm({ taskId: t.id, email: "", name: "", position: "" });
     if (contacts[t.id] == null) loadContacts(t.id);
   }
 
-  async function saveTask(e) {
+  /* save task ---------------------------------------------------- */
+  async function save(e) {
     e.preventDefault();
     await onUpdate(editingId, {
-      name: form.name,
-      customer: form.customer,
-      startedAt: inputToIso(form.startedAt),
-      finishedAt: form.finishedAt ? inputToIso(form.finishedAt) : null,
-      notes: form.notes.trim() || null,
+      name       : form.name,
+      customer   : form.customer,
+      startedAt  : inputToIso(form.startedAt),
+      finishedAt : form.finishedAt ? inputToIso(form.finishedAt) : null,
+      notes      : form.notes.trim() || null,
     });
     setEdit(null);
   }
 
-  /* -------- add contact from task -------- */
-  async function addContact(e) {
-    e.preventDefault();
+  /* add contact (NO nested form) --------------------------------- */
+  async function addContact() {
     const { taskId, email, name, position } = cForm;
-    if (!email.trim() || !name.trim()) return;
+    if (!email.trim()) return;                      // email required
+    const finalName =
+      name.trim() || nameFromEmail(email.trim());   // auto-fill name
     await api
-      .insertContact(taskId, { email, name, position })
+      .insertContact(taskId, {
+        email   : email.trim(),
+        name    : finalName,
+        position: position.trim() || null,
+      })
       .then(() => loadContacts(taskId));
     setCForm({ taskId, email: "", name: "", position: "" });
   }
 
-  /* small helpers */
+  /* helpers */
   const hdr = (k) =>
-    `sortable${sort.key === k ? (sort.asc ? " sort-asc" : " sort-desc") : ""}`;
+    `sortable${
+      sort.key === k ? (sort.asc ? " sort-asc" : " sort-desc") : ""
+    }`;
   const toggleRow = (t) => {
     const newId = expandedId === t.id ? null : t.id;
     if (newId && contacts[newId] == null) loadContacts(newId);
     setExpanded(newId);
   };
 
-  /* -------- render -------- */
+  /* ───────── render ───────── */
   return (
     <>
       <section className="card">
         <h3>Tasks</h3>
-        {sorted.length === 0 ? (
+        {sortedRows.length === 0 ? (
           <p>
             <em>No tasks yet</em>
           </p>
@@ -195,18 +202,19 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                 <th></th>
               </tr>
             </thead>
-
             <tbody>
-              {sorted.map((t) => (
+              {sortedRows.map((t) => (
                 <React.Fragment key={t.id}>
-                  {/* summary row */}
+                  {/* clickable summary row */}
                   <tr className="clickable-row" onClick={() => toggleRow(t)}>
                     <td>{t.name}</td>
                     <td>{t.customer || "—"}</td>
                     <td>{fmt(t.startedAt)}</td>
                     <td>{t.finishedAt ? fmt(t.finishedAt) : "—"}</td>
                     <td>
-                      {t.finishedAt ? dur(diffMs(t.startedAt, t.finishedAt)) : "—"}
+                      {t.finishedAt
+                        ? fmtDuration(diffMs(t.startedAt, t.finishedAt))
+                        : "—"}
                     </td>
                     <td className="notes-snippet">
                       {t.notes
@@ -234,19 +242,18 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     </td>
                   </tr>
 
-                  {/* --- inline edit row --- */}
+                  {/* inline edit row */}
                   {editingId === t.id && (
                     <tr>
                       <td colSpan={7}>
                         <form
-                          onSubmit={saveTask}
+                          onSubmit={save}
                           style={{
                             display: "flex",
                             flexWrap: "wrap",
                             gap: ".4rem",
                           }}
                         >
-                          {/* task fields */}
                           <input
                             value={form.name}
                             onChange={(e) =>
@@ -293,8 +300,6 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                             <h4 style={{ margin: ".2rem 0 .6rem" }}>
                               Contacts
                             </h4>
-
-                            {/* existing contacts */}
                             {contacts[t.id]?.length ? (
                               <table
                                 style={{ width: "100%", marginBottom: ".6rem" }}
@@ -336,41 +341,32 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                               </p>
                             )}
 
-                            {/* add-contact form (Email → Name → Position) */}
-                            <form
-                              onSubmit={addContact}
+                            {/* add contact block */}
+                            <div
                               style={{
                                 display: "flex",
                                 gap: ".4rem",
                                 flexWrap: "wrap",
                               }}
                             >
+                              {/* EMAIL first */}
                               <input
                                 style={{ flex: 1 }}
                                 placeholder="Email"
                                 value={cForm.email}
-                                onChange={(e) => {
-                                  const email = e.target.value;
-                                  setCForm((f) => ({
-                                    ...f,
-                                    email,
-                                    /* auto-fill name if empty */
-                                    name:
-                                      f.name.trim() || !email.includes("@")
-                                        ? f.name
-                                        : nameFromEmail(email),
-                                  }));
-                                }}
+                                onChange={(e) =>
+                                  setCForm({ ...cForm, email: e.target.value })
+                                }
                                 required
                               />
+                              {/* NAME second */}
                               <input
                                 style={{ flex: 1 }}
-                                placeholder="Name"
+                                placeholder="Name (auto if blank)"
                                 value={cForm.name}
                                 onChange={(e) =>
                                   setCForm({ ...cForm, name: e.target.value })
                                 }
-                                required
                               />
                               <input
                                 style={{ flex: 1 }}
@@ -384,12 +380,14 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                                 }
                               />
                               <button
+                                type="button"
                                 className="btn"
                                 style={{ flex: "0 0 100%" }}
+                                onClick={addContact}
                               >
                                 Add
                               </button>
-                            </form>
+                            </div>
                           </div>
 
                           <button className="btn">Save</button>
@@ -405,7 +403,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     </tr>
                   )}
 
-                  {/* --- expanded details row --- */}
+                  {/* expanded details row */}
                   {expandedId === t.id && (
                     <tr>
                       <td colSpan={7} style={{ background: "var(--row-alt)" }}>
@@ -414,7 +412,6 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                             <ReactMarkdown>{t.notes}</ReactMarkdown>
                           </div>
                         )}
-
                         <h4 style={{ marginTop: t.notes ? "1rem" : 0 }}>
                           Contacts
                         </h4>
