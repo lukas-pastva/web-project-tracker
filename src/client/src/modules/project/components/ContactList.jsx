@@ -11,15 +11,12 @@ const nameFromEmail = (email = "") =>
     .join(" ");
 
 /**
- * Inline contact manager for a single task.
+ * Contact-manager modal for a single task.
  * Props: { taskId, onClose }
  */
 export default function ContactList({ taskId, onClose }) {
   const [rows, setRows] = useState([]);
-
-  /* e-mail is now the first field */
   const [form, setForm] = useState({ email: "", name: "", position: "" });
-
   const [err, setErr] = useState("");
 
   const reload = () =>
@@ -27,9 +24,9 @@ export default function ContactList({ taskId, onClose }) {
 
   useEffect(reload, [taskId]);
 
+  /* ─── CRUD helpers ─────────────────────────────────────────── */
   async function add(e) {
     e.preventDefault();
-    /* auto-fill name if the user left it blank */
     const finalName =
       form.name.trim() || nameFromEmail(form.email.trim() || "");
 
@@ -50,6 +47,7 @@ export default function ContactList({ taskId, onClose }) {
     await api.deleteContact(id).then(reload).catch((e) => setErr(e.message));
   }
 
+  /* ─── UI ───────────────────────────────────────────────────── */
   return (
     <div className="modal-backdrop">
       <div className="modal-box" style={{ maxWidth: 480 }}>
@@ -99,7 +97,7 @@ export default function ContactList({ taskId, onClose }) {
             marginTop: "1rem",
           }}
         >
-          {/* Email first */}
+          {/* e-mail first */} 
           <input
             style={{ flex: 1 }}
             placeholder="Email"
@@ -108,7 +106,6 @@ export default function ContactList({ taskId, onClose }) {
             onBlur={() =>
               setForm((f) => ({
                 ...f,
-                /* auto-fill once the user leaves the e-mail field */
                 name: f.name.trim() || nameFromEmail(f.email.trim()),
               }))
             }
@@ -133,6 +130,7 @@ export default function ContactList({ taskId, onClose }) {
         </form>
 
         <button
+          type="button"      /* prevents accidental form-submit navigation */
           className="btn-light"
           style={{ marginTop: "1rem" }}
           onClick={onClose}
