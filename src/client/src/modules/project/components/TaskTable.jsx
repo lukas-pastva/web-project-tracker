@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
-import api from "../api.js";                          // contacts CRUD
+import api from "../api.js";
 
-/* ─────────────────────────── helpers ──────────────────────────── */
+/* ───────── helpers ───────── */
 const fmt = (iso) =>
   new Intl.DateTimeFormat(undefined, {
     dateStyle: "short",
@@ -21,41 +21,39 @@ const fmtDuration = (ms) =>
         .toString()
         .padStart(2, "0")}m`;
 
-/* ─────────────────────────── component ────────────────────────── */
+/* ───────── component ───────── */
 export default function TaskTable({ rows, onUpdate, onDelete }) {
-  /* CRUD / UI state */
-  const [editingId,   setEdit]         = useState(null);
-  const [form,        setForm]         = useState({});
-  const [expandedId,  setExpanded]     = useState(null);
-  const [deleteId,    setDeleteId]     = useState(null);
+  /* basic UI state */
+  const [editingId,  setEdit]     = useState(null);
+  const [form,       setForm]     = useState({});
+  const [expandedId, setExpanded] = useState(null);
+  const [deleteId,   setDeleteId] = useState(null);
 
-  /* contacts cache { taskId → [contacts] } + per-task add-form */
-  const [contacts,      setContacts]   = useState({});
-  const [contactForm,   setCForm]      = useState({ taskId:null, name:"", email:"", position:"" });
-  const loadContacts = async (tid) => {
-    const list = await api.listContacts(tid).catch(()=>[]);
-    setContacts((c) => ({ ...c, [tid]: list }));
-  };
+  /* contacts cache  (taskId → [contacts]) */
+  const [contacts,    setContacts] = useState({});
+  const [cForm,       setCForm]    = useState({ taskId:null, name:"", email:"", position:"" });
+  const loadContacts  = async (tid) =>
+    setContacts((c) => ({ ...c, [tid]: await api.listContacts(tid).catch(()=>[]) }));
 
-  /* sorting */
+  /* ensure contacts load when a row is expanded ------------------ */
+  useEffect(() => {
+    if (expandedId && contacts[expandedId] == null) loadContacts(expandedId);
+  }, [expandedId]);                                                     // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* sorting logic ------------------------------------------------ */
   const [sort, setSort] = useState({ key: "startedAt", asc: true });
-  const clickSort = (key) =>
-    setSort((s) => ({ key, asc: s.key === key ? !s.asc : true }));
-
   const sortedRows = useMemo(() => {
     const dir = sort.asc ? 1 : -1;
     return [...rows].sort((a, b) => {
-      /* “duration” is virtual */
       if (sort.key === "duration") {
         const dx = diffMs(a.startedAt, a.finishedAt);
         const dy = diffMs(b.startedAt, b.finishedAt);
         return dx === dy ? 0 : dx > dy ? dir : -dir;
       }
-      const x = a[sort.key];
-      const y = b[sort.key];
+      const x = a[sort.key], y = b[sort.key];
       if (x == null && y == null) return 0;
       if (x == null) return -dir;
-      if (y == null) return dir;
+      if (y == null) return  dir;
       return x > y ? dir : -dir;
     });
   }, [rows, sort]);
@@ -70,12 +68,12 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
       finishedAt : t.finishedAt ? isoToInput(t.finishedAt) : "",
       notes      : t.notes ?? "",
     });
-    setCForm({ taskId:t.id, name:"", email:"", position:"" });
-    loadContacts(t.id);
     setEdit(t.id);
+    setCForm({ taskId:t.id, name:"", email:"", position:"" });
+    if (contacts[t.id] == null) loadContacts(t.id);
   }
 
-  /* save edit ---------------------------------------------------- */
+  /* save task ---------------------------------------------------- */
   async function save(e) {
     e.preventDefault();
     await onUpdate(editingId, {
@@ -88,22 +86,25 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     setEdit(null);
   }
 
-  /* add contact while editing ------------------------------------ */
-  async function addContact(e) {
+  /* add contact while editing ----------------------------------- */
+  async function addContact(e){
     e.preventDefault();
-    const { taskId, name, email, position } = contactForm;
-    if (!name.trim() || !email.trim()) return;
-    await api
-      .insertContact(taskId, { name, email, position })
-      .then(() => loadContacts(taskId));
+    const { taskId, name, email, position } = cForm;
+    if(!name.trim() || !email.trim()) return;
+    await api.insertContact(taskId, { name, email, position })
+             .then(()=>loadContacts(taskId));
     setCForm({ taskId, name:"", email:"", position:"" });
   }
 
-  /* header class helper ------------------------------------------ */
-  const hdrClass = (k) =>
-    `sortable${sort.key === k ? (sort.asc ? " sort-asc" : " sort-desc") : ""}`;
+  /* helpers */
+  const hdr = (k) => `sortable${sort.key===k? (sort.asc?" sort-asc":" sort-desc"):""}`;
+  const toggleRow = (t) => {
+    const newId = expandedId === t.id ? null : t.id;
+    if (newId && contacts[newId]==null) loadContacts(newId);
+    setExpanded(newId);
+  };
 
-  /* ─────────────────────────── render ──────────────────────────── */
+  /* ───────── render ───────── */
   return (
     <>
       <section className="card">
@@ -114,211 +115,106 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
           <table className="tasks-table">
             <thead>
               <tr>
-                <th className={hdrClass("name")}       onClick={() => clickSort("name")}>Name</th>
-                <th className={hdrClass("customer")}   onClick={() => clickSort("customer")}>Customer</th>
-                <th className={hdrClass("startedAt")}  onClick={() => clickSort("startedAt")}>Start</th>
-                <th className={hdrClass("finishedAt")} onClick={() => clickSort("finishedAt")}>End</th>
-                <th className={hdrClass("duration")}   onClick={() => clickSort("duration")}>Duration</th>
+                <th className={hdr("name")}       onClick={()=>setSort({key:"name",       asc:sort.key==="name"? !sort.asc:true})}>Name</th>
+                <th className={hdr("customer")}   onClick={()=>setSort({key:"customer",   asc:sort.key==="customer"? !sort.asc:true})}>Customer</th>
+                <th className={hdr("startedAt")}  onClick={()=>setSort({key:"startedAt",  asc:sort.key==="startedAt"? !sort.asc:true})}>Start</th>
+                <th className={hdr("finishedAt")} onClick={()=>setSort({key:"finishedAt", asc:sort.key==="finishedAt"? !sort.asc:true})}>End</th>
+                <th className={hdr("duration")}   onClick={()=>setSort({key:"duration",   asc:sort.key==="duration"? !sort.asc:true})}>Duration</th>
                 <th>Notes</th><th></th>
               </tr>
             </thead>
-
             <tbody>
               {sortedRows.map((t) => (
                 <React.Fragment key={t.id}>
-                  {/* main row –- whole line toggles details -------------- */}
-                  <tr
-                    className="clickable-row"
-                    onClick={() =>
-                      setExpanded(expandedId === t.id ? null : t.id) }
-                  >
+                  {/* clickable summary row */}
+                  <tr className="clickable-row" onClick={()=>toggleRow(t)}>
                     <td>{t.name}</td>
                     <td>{t.customer || "—"}</td>
                     <td>{fmt(t.startedAt)}</td>
                     <td>{t.finishedAt ? fmt(t.finishedAt) : "—"}</td>
-                    <td>{t.finishedAt ? fmtDuration(diffMs(t.startedAt, t.finishedAt)) : "—"}</td>
+                    <td>{t.finishedAt ? fmtDuration(diffMs(t.startedAt,t.finishedAt)) : "—"}</td>
                     <td className="notes-snippet">
-                      {t.notes ? (
-                        <ReactMarkdown components={{ p: "span" }}>
-                          {t.notes.length > 60 ? t.notes.slice(0, 60) + "…" : t.notes}
-                        </ReactMarkdown>
-                      ) : "—"}
+                      {t.notes ? `${t.notes.slice(0,60)}${t.notes.length>60?"…":""}` : "—"}
                     </td>
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      <button
-                        className="btn-light"
-                        onClick={(e) => beginEdit(e, t)}
-                      >
-                        Edit
-                      </button>{" "}
-                      <button
-                        className="btn-light"
-                        onClick={(e) => { e.stopPropagation(); setDeleteId(t.id); }}
-                      >
-                        ×
-                      </button>
+                    <td style={{whiteSpace:"nowrap"}}>
+                      <button className="btn-light" onClick={(e)=>beginEdit(e,t)}>Edit</button>{" "}
+                      <button className="btn-light" onClick={(e)=>{e.stopPropagation();setDeleteId(t.id);}}>×</button>
                     </td>
                   </tr>
 
-                  {/* inline edit row ------------------------------------ */}
-                  {editingId === t.id && (
+                  {/* inline edit row */}
+                  {editingId===t.id && (
                     <tr>
                       <td colSpan={7}>
-                        <form
-                          onSubmit={save}
-                          style={{
-                            display      : "flex",
-                            gap          : ".4rem",
-                            flexWrap     : "wrap",
-                            alignItems   : "flex-start",
-                          }}
-                        >
-                          <input
-                            value={form.name}
-                            onChange={(e) =>
-                              setForm({ ...form, name: e.target.value })}
-                            required
-                          />
-                          <input
-                            value={form.customer}
-                            onChange={(e) =>
-                              setForm({ ...form, customer: e.target.value })}
-                          />
-                          <input
-                            type="datetime-local"
-                            value={form.startedAt}
-                            onChange={(e) =>
-                              setForm({ ...form, startedAt: e.target.value })}
-                            required
-                          />
-                          <input
-                            type="datetime-local"
-                            value={form.finishedAt}
-                            onChange={(e) =>
-                              setForm({ ...form, finishedAt: e.target.value })}
-                          />
-                          <textarea
-                            value={form.notes}
-                            onChange={(e) =>
-                              setForm({ ...form, notes: e.target.value })}
-                            rows={3}
-                            placeholder="Notes (Markdown)"
-                            style={{ flex: "1 1 100%" }}
-                          />
+                        <form onSubmit={save} style={{display:"flex",flexWrap:"wrap",gap:".4rem"}}>
+                          {/* ...inputs unchanged... */}
+                          <input value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} required/>
+                          <input value={form.customer} onChange={(e)=>setForm({...form,customer:e.target.value})}/>
+                          <input type="datetime-local" value={form.startedAt} onChange={(e)=>setForm({...form,startedAt:e.target.value})} required/>
+                          <input type="datetime-local" value={form.finishedAt} onChange={(e)=>setForm({...form,finishedAt:e.target.value})}/>
+                          <textarea rows={3} style={{flex:"1 1 100%"}} placeholder="Notes (Markdown)"
+                                    value={form.notes} onChange={(e)=>setForm({...form,notes:e.target.value})}/>
 
-                          {/* contacts manager inside edit ---------------- */}
-                          <div className="contacts-box" style={{ flexBasis:"100%" }}>
-                            <h4 style={{ margin: ".2rem 0 .6rem" }}>Contacts</h4>
+                          {/* contacts manager */}
+                          <div className="contacts-box" style={{flexBasis:"100%"}}>
+                            <h4 style={{margin:".2rem 0 .6rem"}}>Contacts</h4>
                             {contacts[t.id]?.length ? (
-                              <table style={{ width:"100%", marginBottom:".6rem" }}>
-                                <thead><tr>
-                                  <th>Name</th><th>Email</th><th>Position</th><th></th>
-                                </tr></thead>
+                              <table style={{width:"100%",marginBottom:".6rem"}}>
+                                <thead><tr><th>Name</th><th>Email</th><th>Position</th><th></th></tr></thead>
                                 <tbody>
                                   {contacts[t.id].map((c)=>(
                                     <tr key={c.id}>
-                                      <td>{c.name}</td>
-                                      <td>{c.email}</td>
-                                      <td>{c.position || "—"}</td>
+                                      <td>{c.name}</td><td>{c.email}</td><td>{c.position||"—"}</td>
                                       <td>
-                                        <button
-                                          className="btn-light"
-                                          onClick={(e)=>{
-                                            e.preventDefault();
-                                            api.deleteContact(c.id)
-                                               .then(()=>loadContacts(t.id));
-                                          }}
-                                        >×</button>
+                                        <button className="btn-light"
+                                                onClick={(e)=>{e.preventDefault();api.deleteContact(c.id).then(()=>loadContacts(t.id));}}>×</button>
                                       </td>
                                     </tr>
                                   ))}
                                 </tbody>
                               </table>
-                            ) : (
-                              <p><em>No contacts yet</em></p>
-                            )}
+                            ) : <p><em>No contacts yet</em></p>}
 
-                            {/* add new contact */}
-                            <form
-                              onSubmit={addContact}
-                              style={{ display:"flex", gap:".4rem", flexWrap:"wrap" }}
-                            >
-                              <input
-                                style={{ flex:1 }}
-                                placeholder="Name"
-                                value={contactForm.name}
-                                onChange={(e)=>setCForm({ ...contactForm, name:e.target.value })}
-                                required
-                              />
-                              <input
-                                style={{ flex:1 }}
-                                placeholder="Email"
-                                value={contactForm.email}
-                                onChange={(e)=>setCForm({ ...contactForm, email:e.target.value })}
-                                required
-                              />
-                              <input
-                                style={{ flex:1 }}
-                                placeholder="Position"
-                                value={contactForm.position}
-                                onChange={(e)=>setCForm({ ...contactForm, position:e.target.value })}
-                              />
-                              <button className="btn" style={{ flex:"0 0 100%" }}>
-                                Add
-                              </button>
+                            {/* add contact */}
+                            <form onSubmit={addContact} style={{display:"flex",gap:".4rem",flexWrap:"wrap"}}>
+                              <input style={{flex:1}} placeholder="Name"   value={cForm.name}
+                                     onChange={(e)=>setCForm({...cForm,name:e.target.value})} required/>
+                              <input style={{flex:1}} placeholder="Email"  value={cForm.email}
+                                     onChange={(e)=>setCForm({...cForm,email:e.target.value})} required/>
+                              <input style={{flex:1}} placeholder="Position" value={cForm.position}
+                                     onChange={(e)=>setCForm({...cForm,position:e.target.value})}/>
+                              <button className="btn" style={{flex:"0 0 100%"}}>Add</button>
                             </form>
                           </div>
 
                           <button className="btn">Save</button>
-                          <button
-                            type="button"
-                            className="btn-light"
-                            onClick={() => setEdit(null)}
-                          >
-                            Cancel
-                          </button>
+                          <button type="button" className="btn-light" onClick={()=>setEdit(null)}>Cancel</button>
                         </form>
                       </td>
                     </tr>
                   )}
 
-                  {/* expanded details (notes + contacts) ---------------- */}
-                  {expandedId === t.id && (
+                  {/* expanded details row */}
+                  {expandedId===t.id && (
                     <tr>
-                      <td colSpan={7} style={{ background: "var(--row-alt)" }}>
-                        {t.notes && (
-                          <div className="notes-full">
-                            <ReactMarkdown>{t.notes}</ReactMarkdown>
-                          </div>
-                        )}
-
-                        {/* contacts list in a bordered box */}
-                        <h4 style={{ marginTop: t.notes ? "1rem" : 0 }}>
-                          Contacts
-                        </h4>
+                      <td colSpan={7} style={{background:"var(--row-alt)"}}>
+                        {t.notes && <div className="notes-full"><ReactMarkdown>{t.notes}</ReactMarkdown></div>}
+                        <h4 style={{marginTop:t.notes?"1rem":0}}>Contacts</h4>
                         <div className="contacts-box">
-                          {contacts[t.id]
-                            ? contacts[t.id].length
-                              ? (
-                                <table style={{ width:"100%" }}>
-                                  <thead><tr>
-                                    <th>Name</th><th>Email</th><th>Position</th>
-                                  </tr></thead>
-                                  <tbody>
-                                    {contacts[t.id].map((c)=>(
-                                      <tr key={c.id}>
-                                        <td>{c.name}</td>
-                                        <td>{c.email}</td>
-                                        <td>{c.position || "—"}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              )
-                              : <p><em>No contacts</em></p>
-                            : /* not yet loaded */ (
-                              <p><em>Loading…</em></p>
-                            )}
+                          {contacts[t.id]==null ? (
+                            <p><em>Loading…</em></p>
+                          ) : contacts[t.id].length ? (
+                            <table style={{width:"100%"}}>
+                              <thead><tr><th>Name</th><th>Email</th><th>Position</th></tr></thead>
+                              <tbody>
+                                {contacts[t.id].map((c)=>(
+                                  <tr key={c.id}><td>{c.name}</td><td>{c.email}</td><td>{c.position||"—"}</td></tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <p><em>No contacts</em></p>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -330,32 +226,14 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         )}
       </section>
 
-      {/* delete-confirm modal -------------------------------------- */}
-      {deleteId !== null && (
+      {/* delete-confirm modal */}
+      {deleteId!=null && (
         <div className="modal-backdrop">
           <div className="modal-box">
-            <p style={{ marginTop: 0 }}>Delete this task?</p>
-            <div
-              style={{
-                marginTop:"1rem", display:"flex", gap:".6rem",
-                justifyContent:"center",
-              }}
-            >
-              <button
-                className="btn"
-                onClick={async () => {
-                  await onDelete(deleteId);
-                  setDeleteId(null);
-                }}
-              >
-                Delete
-              </button>
-              <button
-                className="btn-light"
-                onClick={() => setDeleteId(null)}
-              >
-                Cancel
-              </button>
+            <p style={{marginTop:0}}>Delete this task?</p>
+            <div style={{marginTop:"1rem",display:"flex",gap:".6rem",justifyContent:"center"}}>
+              <button className="btn" onClick={async()=>{await onDelete(deleteId);setDeleteId(null);}}>Delete</button>
+              <button className="btn-light" onClick={()=>setDeleteId(null)}>Cancel</button>
             </div>
           </div>
         </div>
