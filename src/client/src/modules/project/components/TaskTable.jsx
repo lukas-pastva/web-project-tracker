@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
+import ContactList from "./ContactList.jsx";        // ★ NEW
 
 /* helper – compact locale date/time, 24-hour clock */
 const fmt = (iso) =>
@@ -10,10 +11,11 @@ const fmt = (iso) =>
   });
 
 export default function TaskTable({ rows, onUpdate, onDelete }) {
-  /* edit + expanded state */
-  const [editingId, setEdit]  = useState(null);
-  const [form,      setForm]  = useState({});
+  /* edit / expanded / contacts state */
+  const [editingId, setEdit]      = useState(null);
+  const [form,      setForm]      = useState({});
   const [expandedId, setExpanded] = useState(null);
+  const [contactTaskId, setContactTaskId] = useState(null);   // ★
 
   /* delete-confirm modal */
   const [deleteId,  setDeleteId] = useState(null);
@@ -63,7 +65,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
             <tbody>
               {rows.map((t) => (
                 <React.Fragment key={t.id}>
-                  {/* main row -------------------------------------------- */}
+                  {/* main row -------------------------------------------------- */}
                   <tr>
                     <td>{t.name}</td>
                     <td>{t.customer || "—"}</td>
@@ -100,11 +102,17 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                         onClick={() => setDeleteId(t.id)}
                       >
                         ×
+                      </button>{" "}
+                      <button
+                        className="btn-light"
+                        onClick={() => setContactTaskId(t.id)}   /* ★ */
+                      >
+                        Contacts
                       </button>
                     </td>
                   </tr>
 
-                  {/* inline edit row -------------------------------------- */}
+                  {/* inline edit row ------------------------------------------ */}
                   {editingId === t.id && (
                     <tr>
                       <td colSpan={6}>
@@ -168,7 +176,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     </tr>
                   )}
 
-                  {/* expanded Markdown row -------------------------------- */}
+                  {/* expanded Markdown row ----------------------------------- */}
                   {expandedId === t.id && t.notes && (
                     <tr>
                       <td colSpan={6} style={{ background: "var(--row-alt)" }}>
@@ -183,7 +191,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         )}
       </section>
 
-      {/* ─── delete-confirm modal ──────────────────────────────────── */}
+      {/* delete-confirm modal */}
       {deleteId !== null && (
         <div className="modal-backdrop">
           <div className="modal-box">
@@ -207,6 +215,14 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* contacts modal (NEW) */}
+      {contactTaskId !== null && (
+        <ContactList
+          taskId={contactTaskId}
+          onClose={() => setContactTaskId(null)}
+        />
       )}
     </>
   );
