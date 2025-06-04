@@ -21,26 +21,24 @@ const fmtDuration = (ms) =>
         .toString()
         .padStart(2, "0")}m`;
 
-/* robust “email → Name Surname” */
+/* robust local-part → “Name Surname” */
 const nameFromEmail = (email = "") =>
   email
-    .split("@")[0] // local-part
-    .split(/[^a-zA-Z]+/) // break on any non-letter
+    .split("@")[0]
+    .split(/[^a-zA-Z]+/)
     .filter(Boolean)
-    .map(
-      (p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() // Capitalise
-    )
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
     .join(" ");
 
 /* ───────── component ───────── */
 export default function TaskTable({ rows, onUpdate, onDelete }) {
-  /* basic UI state */
+  /* UI state ---------------------------------------------------- */
   const [editingId, setEdit] = useState(null);
   const [form, setForm] = useState({});
   const [expandedId, setExpanded] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
 
-  /* contacts cache  (taskId → [contacts]) */
+  /* contacts cache + add-form ---------------------------------- */
   const [contacts, setContacts] = useState({});
   const [cForm, setCForm] = useState({
     taskId: null,
@@ -49,18 +47,17 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     position: "",
   });
 
-  /* --- contacts helpers ---------------------------------------- */
   const loadContacts = async (tid) => {
     const list = await api.listContacts(tid).catch(() => []);
     setContacts((c) => ({ ...c, [tid]: list }));
   };
 
-  /* ensure contacts load when row is expanded */
+  /* auto-fetch on expand */
   useEffect(() => {
     if (expandedId && contacts[expandedId] == null) loadContacts(expandedId);
   }, [expandedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* --- sorting -------------------------------------------------- */
+  /* sorting ----------------------------------------------------- */
   const [sort, setSort] = useState({ key: "startedAt", asc: true });
   const sortedRows = useMemo(() => {
     const dir = sort.asc ? 1 : -1;
@@ -79,7 +76,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     });
   }, [rows, sort]);
 
-  /* --- task edit lifecycle ------------------------------------- */
+  /* task edit cycle -------------------------------------------- */
   function beginEdit(e, t) {
     e.stopPropagation();
     setForm({
@@ -106,9 +103,8 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     setEdit(null);
   }
 
-  /* --- contacts CRUD inside edit -------------------------------- */
-  async function addContact(e) {
-    e.preventDefault();
+  /* contacts CRUD ---------------------------------------------- */
+  async function addContact() {
     const { taskId, email, name, position } = cForm;
     if (!email.trim()) return;
 
@@ -129,7 +125,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     await api.deleteContact(cid).then(() => loadContacts(tid));
   }
 
-  /* --- helpers -------------------------------------------------- */
+  /* helpers */
   const hdr = (k) =>
     `sortable${
       sort.key === k ? (sort.asc ? " sort-asc" : " sort-desc") : ""
@@ -215,7 +211,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
             <tbody>
               {sortedRows.map((t) => (
                 <React.Fragment key={t.id}>
-                  {/* summary row (clickable) */}
+                  {/* summary row ----------------------------------- */}
                   <tr className="clickable-row" onClick={() => toggleRow(t)}>
                     <td>{t.name}</td>
                     <td>{t.customer || "—"}</td>
@@ -252,7 +248,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     </td>
                   </tr>
 
-                  {/* inline edit */}
+                  {/* inline edit ---------------------------------- */}
                   {editingId === t.id && (
                     <tr>
                       <td colSpan={7}>
@@ -302,7 +298,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                             }
                           />
 
-                          {/* contacts manager */}
+                          {/* contacts manager ------------------- */}
                           <div
                             className="contacts-box"
                             style={{ flexBasis: "100%" }}
@@ -350,9 +346,8 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                               </p>
                             )}
 
-                            {/* add contact */}
-                            <form
-                              onSubmit={addContact}
+                            {/* add contact – no nested form ---- */}
+                            <div
                               style={{
                                 display: "flex",
                                 gap: ".4rem",
@@ -363,15 +358,12 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                                 style={{ flex: 1 }}
                                 placeholder="Email"
                                 value={cForm.email}
-                                onChange={(e) => {
-                                  const email = e.target.value;
-                                  setCForm((f) => ({
-                                    ...f,
-                                    email,
-                                    name:
-                                      f.name.trim() === "" ? "" : f.name,
-                                  }));
-                                }}
+                                onChange={(e) =>
+                                  setCForm({
+                                    ...cForm,
+                                    email: e.target.value,
+                                  })
+                                }
                                 onBlur={() =>
                                   setCForm((f) => ({
                                     ...f,
@@ -402,12 +394,14 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                                 }
                               />
                               <button
+                                type="button"
                                 className="btn"
                                 style={{ flex: "0 0 100%" }}
+                                onClick={addContact}
                               >
                                 Add
                               </button>
-                            </form>
+                            </div>
                           </div>
 
                           <button className="btn">Save</button>
@@ -423,7 +417,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     </tr>
                   )}
 
-                  {/* expanded details */}
+                  {/* expanded details --------------------------- */}
                   {expandedId === t.id && (
                     <tr>
                       <td colSpan={7} style={{ background: "var(--row-alt)" }}>
@@ -475,7 +469,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         )}
       </section>
 
-      {/* delete-confirm modal */}
+      {/* delete-confirm modal ------------------------------------ */}
       {deleteId != null && (
         <div className="modal-backdrop">
           <div className="modal-box">
