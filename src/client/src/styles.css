@@ -110,7 +110,13 @@ td.notes-full{
   border-radius:6px;
   padding:.75rem;
 }
-
+/* bordered wrapper used by contacts blocks */
+.contacts-box{
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:.6rem .75rem;
+  background:var(--bg-card);
+}
 /* ───────────────────────── icons, alerts, spinner */
 .feed-icon{font-size:1.25rem;margin-right:.25rem;vertical-align:text-bottom}
 

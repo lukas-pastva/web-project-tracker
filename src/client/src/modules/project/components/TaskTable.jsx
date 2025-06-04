@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
-import api from "../api.js";
+import api from "../api.js";                          // contacts CRUD
 
-/* ───────── helpers ───────── */
+/* ─────────────────────────── helpers ──────────────────────────── */
 const fmt = (iso) =>
   new Intl.DateTimeFormat(undefined, {
     dateStyle: "short",
     timeStyle: "short",
-    hour12: false,
+    hour12   : false,
   }).format(new Date(iso));
 
 const isoToInput  = (iso) => iso?.slice(0, 16);
@@ -17,29 +17,27 @@ const diffMs      = (a, b) => new Date(b) - new Date(a);
 const fmtDuration = (ms) =>
   ms == null
     ? "—"
-    : `${Math.floor(ms / 3_600_000)}h ${String(
-        Math.floor(ms / 60_000) % 60,
-      ).padStart(2, "0")}m`;
+    : `${Math.floor(ms / 3_600_000)}h ${(Math.floor(ms / 60_000) % 60)
+        .toString()
+        .padStart(2, "0")}m`;
 
-/* ───────── component ───────── */
+/* ─────────────────────────── component ────────────────────────── */
 export default function TaskTable({ rows, onUpdate, onDelete }) {
-  /* UI / CRUD ---------------------------------------------------- */
+  /* CRUD / UI state */
   const [editingId,   setEdit]         = useState(null);
   const [form,        setForm]         = useState({});
   const [expandedId,  setExpanded]     = useState(null);
   const [deleteId,    setDeleteId]     = useState(null);
 
-  /* contacts cache { taskId: [ … ] } + add-form state ------------ */
-  const [contacts,  setContacts]  = useState({});
-  const [newC,      setNewC]      = useState({ name: "", email: "", position: "" });
+  /* contacts cache { taskId → [contacts] } + per-task add-form */
+  const [contacts,      setContacts]   = useState({});
+  const [contactForm,   setCForm]      = useState({ taskId:null, name:"", email:"", position:"" });
+  const loadContacts = async (tid) => {
+    const list = await api.listContacts(tid).catch(()=>[]);
+    setContacts((c) => ({ ...c, [tid]: list }));
+  };
 
-  const loadContacts = (tid) =>
-    api
-      .listContacts(tid)
-      .then((data) => setContacts((c) => ({ ...c, [tid]: data })))
-      .catch(() => { /* ignore */ });
-
-  /* sorting ------------------------------------------------------ */
+  /* sorting */
   const [sort, setSort] = useState({ key: "startedAt", asc: true });
   const clickSort = (key) =>
     setSort((s) => ({ key, asc: s.key === key ? !s.asc : true }));
@@ -47,6 +45,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
   const sortedRows = useMemo(() => {
     const dir = sort.asc ? 1 : -1;
     return [...rows].sort((a, b) => {
+      /* “duration” is virtual */
       if (sort.key === "duration") {
         const dx = diffMs(a.startedAt, a.finishedAt);
         const dy = diffMs(b.startedAt, b.finishedAt);
@@ -61,12 +60,6 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     });
   }, [rows, sort]);
 
-  /* toggle expanded row & lazy-load contacts --------------------- */
-  const toggle = (id) => {
-    setExpanded((prev) => (prev === id ? null : id));
-    if (expandedId !== id && !contacts[id]) loadContacts(id);
-  };
-
   /* begin edit --------------------------------------------------- */
   function beginEdit(e, t) {
     e.stopPropagation();
@@ -77,10 +70,9 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
       finishedAt : t.finishedAt ? isoToInput(t.finishedAt) : "",
       notes      : t.notes ?? "",
     });
-    /* ensure contacts are loaded for inline edit */
-    if (!contacts[t.id]) loadContacts(t.id);
+    setCForm({ taskId:t.id, name:"", email:"", position:"" });
+    loadContacts(t.id);
     setEdit(t.id);
-    setExpanded(null);
   }
 
   /* save edit ---------------------------------------------------- */
@@ -96,32 +88,28 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     setEdit(null);
   }
 
-  /* contacts CRUD inside edit row -------------------------------- */
+  /* add contact while editing ------------------------------------ */
   async function addContact(e) {
     e.preventDefault();
-    if (!newC.name.trim() || !newC.email.trim()) return;
-    await api.insertContact(editingId, newC);
-    await loadContacts(editingId);
-    setNewC({ name: "", email: "", position: "" });
-  }
-  async function delContact(cid) {
-    await api.deleteContact(cid);
-    await loadContacts(editingId);
+    const { taskId, name, email, position } = contactForm;
+    if (!name.trim() || !email.trim()) return;
+    await api
+      .insertContact(taskId, { name, email, position })
+      .then(() => loadContacts(taskId));
+    setCForm({ taskId, name:"", email:"", position:"" });
   }
 
-  /* header class helper ----------------------------------------- */
+  /* header class helper ------------------------------------------ */
   const hdrClass = (k) =>
     `sortable${sort.key === k ? (sort.asc ? " sort-asc" : " sort-desc") : ""}`;
 
-  /* ───────── render ───────── */
+  /* ─────────────────────────── render ──────────────────────────── */
   return (
     <>
       <section className="card">
         <h3>Tasks</h3>
         {sortedRows.length === 0 ? (
-          <p>
-            <em>No tasks yet</em>
-          </p>
+          <p><em>No tasks yet</em></p>
         ) : (
           <table className="tasks-table">
             <thead>
@@ -131,18 +119,18 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                 <th className={hdrClass("startedAt")}  onClick={() => clickSort("startedAt")}>Start</th>
                 <th className={hdrClass("finishedAt")} onClick={() => clickSort("finishedAt")}>End</th>
                 <th className={hdrClass("duration")}   onClick={() => clickSort("duration")}>Duration</th>
-                <th>Notes</th>
-                <th></th>
+                <th>Notes</th><th></th>
               </tr>
             </thead>
 
             <tbody>
               {sortedRows.map((t) => (
                 <React.Fragment key={t.id}>
-                  {/* main row – whole row toggles details */}
+                  {/* main row –- whole line toggles details -------------- */}
                   <tr
                     className="clickable-row"
-                    onClick={() => editingId === t.id ? null : toggle(t.id)}
+                    onClick={() =>
+                      setExpanded(expandedId === t.id ? null : t.id) }
                   >
                     <td>{t.name}</td>
                     <td>{t.customer || "—"}</td>
@@ -152,11 +140,9 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     <td className="notes-snippet">
                       {t.notes ? (
                         <ReactMarkdown components={{ p: "span" }}>
-                          {t.notes.length > 60 ? t.notes.slice(0, 57) + "…" : t.notes}
+                          {t.notes.length > 60 ? t.notes.slice(0, 60) + "…" : t.notes}
                         </ReactMarkdown>
-                      ) : (
-                        "—"
-                      )}
+                      ) : "—"}
                     </td>
                     <td style={{ whiteSpace: "nowrap" }}>
                       <button
@@ -167,10 +153,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                       </button>{" "}
                       <button
                         className="btn-light"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteId(t.id);
-                        }}
+                        onClick={(e) => { e.stopPropagation(); setDeleteId(t.id); }}
                       >
                         ×
                       </button>
@@ -184,131 +167,104 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                         <form
                           onSubmit={save}
                           style={{
-                            display: "flex",
-                            gap: ".4rem",
-                            flexWrap: "wrap",
-                            alignItems: "flex-start",
+                            display      : "flex",
+                            gap          : ".4rem",
+                            flexWrap     : "wrap",
+                            alignItems   : "flex-start",
                           }}
                         >
                           <input
                             value={form.name}
                             onChange={(e) =>
-                              setForm({ ...form, name: e.target.value })
-                            }
+                              setForm({ ...form, name: e.target.value })}
                             required
                           />
                           <input
                             value={form.customer}
                             onChange={(e) =>
-                              setForm({ ...form, customer: e.target.value })
-                            }
+                              setForm({ ...form, customer: e.target.value })}
                           />
                           <input
                             type="datetime-local"
                             value={form.startedAt}
                             onChange={(e) =>
-                              setForm({ ...form, startedAt: e.target.value })
-                            }
+                              setForm({ ...form, startedAt: e.target.value })}
                             required
                           />
                           <input
                             type="datetime-local"
                             value={form.finishedAt}
                             onChange={(e) =>
-                              setForm({ ...form, finishedAt: e.target.value })
-                            }
+                              setForm({ ...form, finishedAt: e.target.value })}
                           />
                           <textarea
                             value={form.notes}
                             onChange={(e) =>
-                              setForm({ ...form, notes: e.target.value })
-                            }
+                              setForm({ ...form, notes: e.target.value })}
                             rows={3}
                             placeholder="Notes (Markdown)"
                             style={{ flex: "1 1 100%" }}
                           />
 
-                          {/* contacts manager ------------------------- */}
-                          <div style={{ flexBasis: "100%" }}>
-                            <h4 style={{ margin: "0.6rem 0 0.2rem" }}>
-                              Contacts
-                            </h4>
-                            {contacts[editingId]?.length ? (
-                              <table style={{ width: "100%" }}>
-                                <thead>
-                                  <tr>
-                                    <th>Name</th>
-                                    <th>Email</th>
-                                    <th>Position</th>
-                                    <th></th>
-                                  </tr>
-                                </thead>
+                          {/* contacts manager inside edit ---------------- */}
+                          <div className="contacts-box" style={{ flexBasis:"100%" }}>
+                            <h4 style={{ margin: ".2rem 0 .6rem" }}>Contacts</h4>
+                            {contacts[t.id]?.length ? (
+                              <table style={{ width:"100%", marginBottom:".6rem" }}>
+                                <thead><tr>
+                                  <th>Name</th><th>Email</th><th>Position</th><th></th>
+                                </tr></thead>
                                 <tbody>
-                                  {contacts[editingId].map((c) => (
+                                  {contacts[t.id].map((c)=>(
                                     <tr key={c.id}>
                                       <td>{c.name}</td>
                                       <td>{c.email}</td>
                                       <td>{c.position || "—"}</td>
                                       <td>
                                         <button
-                                          type="button"
                                           className="btn-light"
-                                          onClick={() => delContact(c.id)}
-                                        >
-                                          ×
-                                        </button>
+                                          onClick={(e)=>{
+                                            e.preventDefault();
+                                            api.deleteContact(c.id)
+                                               .then(()=>loadContacts(t.id));
+                                          }}
+                                        >×</button>
                                       </td>
                                     </tr>
                                   ))}
                                 </tbody>
                               </table>
                             ) : (
-                              <p>
-                                <em>No contacts yet</em>
-                              </p>
+                              <p><em>No contacts yet</em></p>
                             )}
 
-                            {/* add-contact form */}
+                            {/* add new contact */}
                             <form
                               onSubmit={addContact}
-                              style={{
-                                display: "flex",
-                                gap: ".4rem",
-                                flexWrap: "wrap",
-                                marginTop: ".4rem",
-                              }}
+                              style={{ display:"flex", gap:".4rem", flexWrap:"wrap" }}
                             >
                               <input
-                                style={{ flex: 1 }}
+                                style={{ flex:1 }}
                                 placeholder="Name"
-                                value={newC.name}
-                                onChange={(e) =>
-                                  setNewC({ ...newC, name: e.target.value })
-                                }
+                                value={contactForm.name}
+                                onChange={(e)=>setCForm({ ...contactForm, name:e.target.value })}
                                 required
                               />
                               <input
-                                style={{ flex: 1 }}
+                                style={{ flex:1 }}
                                 placeholder="Email"
-                                value={newC.email}
-                                onChange={(e) =>
-                                  setNewC({ ...newC, email: e.target.value })
-                                }
+                                value={contactForm.email}
+                                onChange={(e)=>setCForm({ ...contactForm, email:e.target.value })}
                                 required
                               />
                               <input
-                                style={{ flex: 1 }}
+                                style={{ flex:1 }}
                                 placeholder="Position"
-                                value={newC.position}
-                                onChange={(e) =>
-                                  setNewC({
-                                    ...newC,
-                                    position: e.target.value,
-                                  })
-                                }
+                                value={contactForm.position}
+                                onChange={(e)=>setCForm({ ...contactForm, position:e.target.value })}
                               />
-                              <button className="btn" style={{ flex: "0 0 100%" }}>
-                                Add contact
+                              <button className="btn" style={{ flex:"0 0 100%" }}>
+                                Add
                               </button>
                             </form>
                           </div>
@@ -326,44 +282,44 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     </tr>
                   )}
 
-                  {/* expanded details (notes + contacts) -------------- */}
+                  {/* expanded details (notes + contacts) ---------------- */}
                   {expandedId === t.id && (
                     <tr>
                       <td colSpan={7} style={{ background: "var(--row-alt)" }}>
                         {t.notes && (
-                          <>
-                            <h4>Notes</h4>
+                          <div className="notes-full">
                             <ReactMarkdown>{t.notes}</ReactMarkdown>
-                          </>
+                          </div>
                         )}
 
+                        {/* contacts list in a bordered box */}
                         <h4 style={{ marginTop: t.notes ? "1rem" : 0 }}>
                           Contacts
                         </h4>
-                        {contacts[t.id]?.length ? (
-                          <table style={{ width: "100%" }}>
-                            <thead>
-                              <tr>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Position</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {contacts[t.id].map((c) => (
-                                <tr key={c.id}>
-                                  <td>{c.name}</td>
-                                  <td>{c.email}</td>
-                                  <td>{c.position || "—"}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        ) : (
-                          <p>
-                            <em>No contacts</em>
-                          </p>
-                        )}
+                        <div className="contacts-box">
+                          {contacts[t.id]
+                            ? contacts[t.id].length
+                              ? (
+                                <table style={{ width:"100%" }}>
+                                  <thead><tr>
+                                    <th>Name</th><th>Email</th><th>Position</th>
+                                  </tr></thead>
+                                  <tbody>
+                                    {contacts[t.id].map((c)=>(
+                                      <tr key={c.id}>
+                                        <td>{c.name}</td>
+                                        <td>{c.email}</td>
+                                        <td>{c.position || "—"}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              )
+                              : <p><em>No contacts</em></p>
+                            : /* not yet loaded */ (
+                              <p><em>Loading…</em></p>
+                            )}
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -381,10 +337,8 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
             <p style={{ marginTop: 0 }}>Delete this task?</p>
             <div
               style={{
-                marginTop: "1rem",
-                display: "flex",
-                gap: ".6rem",
-                justifyContent: "center",
+                marginTop:"1rem", display:"flex", gap:".6rem",
+                justifyContent:"center",
               }}
             >
               <button

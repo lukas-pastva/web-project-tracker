@@ -67,4 +67,10 @@ export default {
   deleteContact(contactId) {
     return json(fetch(`/api/contacts/${contactId}`, { method: "DELETE" }));
   },
+
+  /* ───────── all-contacts database ──────────────────────────── */
+  listAllContacts(filters = {}) {
+    const qs = new URLSearchParams(filters).toString();
+    return json(fetch(`/api/contacts${qs ? "?" + qs : ""}`));
+  },
 };

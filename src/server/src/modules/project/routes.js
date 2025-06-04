@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { Op } from "sequelize";
 import { Project, Task, Contact } from "./model.js";
 
 const r = Router();
@@ -33,7 +34,7 @@ r.put("/api/projects/:id", async (req, res) => {
   }
 });
 
-/* delete – tasks & contacts cascade automatically */
+/* delete project – tasks & contacts cascade automatically */
 r.delete("/api/projects/:id", async (req, res) => {
   const p = await Project.findByPk(req.params.id);
   if (!p) return res.status(404).end();
@@ -81,7 +82,7 @@ r.delete("/api/tasks/:id", async (req, res) => {
   res.status(204).end();
 });
 
-/* ───────────────────────── contacts (NEW) ──────────────────────── */
+/* ───────────────────────── task-specific contacts ─────────────── */
 r.get("/api/tasks/:tid/contacts", async (req, res) =>
   res.json(
     await Contact.findAll({
@@ -128,6 +129,50 @@ r.delete("/api/contacts/:cid", async (req, res) => {
   if (!c) return res.status(404).end();
   await c.destroy();
   res.status(204).end();
+});
+
+/* ───────────────────────── global contacts DB (NEW) ───────────── */
+r.get("/api/contacts", async (req, res) => {
+  const { name, email, position, project, customer } = req.query;
+
+  /* LIKE filters only for provided fields */
+  const like = (v) => ({ [Op.like]: `%${v}%` });
+  const whereContact = {
+    ...(name     ? { name     : like(name)     } : {}),
+    ...(email    ? { email    : like(email)    } : {}),
+    ...(position ? { position : like(position) } : {}),
+  };
+
+  const rows = await Contact.findAll({
+    where: whereContact,
+    include: [
+      {
+        model      : Task,
+        attributes : ["customer"],
+        where      : customer ? { customer: like(customer) } : {},
+        include    : [
+          {
+            model      : Project,
+            attributes : ["name"],
+            where      : project ? { name: like(project) } : {},
+          },
+        ],
+      },
+    ],
+    order: [["name", "ASC"]],
+  });
+
+  /* flatten for the frontend */
+  res.json(
+    rows.map((c) => ({
+      id       : c.id,
+      name     : c.name,
+      email    : c.email,
+      position : c.position,
+      customer : c.task.customer,
+      project  : c.task.project.name,
+    }))
+  );
 });
 
 export default r;

@@ -39,7 +39,12 @@ export default function Header() {
             {p.name}
           </a>
         ))}
-
+        <a
+          href="/contacts"
+          className={location.pathname === "/contacts" ? "active" : ""}
+        >
+          Contacts
+        </a>
         <a
           href="/config"
           className={location.pathname === "/config" ? "active" : ""}
