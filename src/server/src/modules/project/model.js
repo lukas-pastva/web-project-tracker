@@ -18,14 +18,14 @@ export const Task = db.define(
     projectId  : { type: DataTypes.INTEGER, allowNull: false },
     name       : { type: DataTypes.STRING(256), allowNull: false },
     customer   : { type: DataTypes.STRING(128) },
-    startedAt  : { type: DataTypes.DATE, allowNull: false },
+    startedAt  : { type: DataTypes.DATE,  allowNull: false },
     finishedAt : { type: DataTypes.DATE },
     notes      : { type: DataTypes.TEXT },
   },
   { timestamps: false }
 );
 
-/* ───────────────────────── NEW: Contacts ───────────────────────── */
+/* ──────────────────────────── Contacts ─────────────────────────── */
 export const Contact = db.define(
   "contact",
   {
@@ -38,12 +38,10 @@ export const Contact = db.define(
   { timestamps: false }
 );
 
-/* ──────────────── relations & cascades ─────────────────────────── */
+/* ─────────────── relations & cascades ──────────────────────────── */
 Project.hasMany(Task,   { foreignKey: "projectId", onDelete: "CASCADE" });
 Task.belongsTo(Project, { foreignKey: "projectId" });
 
 Task.hasMany(Contact,   { foreignKey: "taskId",    onDelete: "CASCADE" });
 Contact.belongsTo(Task, { foreignKey: "taskId" });
 
-/* named exports, no default */
-export { Project, Task, Contact };
