@@ -6,13 +6,13 @@
   --accent-contr  : #ffffff;
   --header-bg     : #374151;   /* grey-8 */
 }
-/* jira-like palette (atlassian blues) */
+/* jira-like palette (Atlassian blues) */
 [data-theme="jira-like"] {
   --accent    : #0c66e4;       /* Atlassian blue-500 */
   --header-bg : #092957;       /* dark blue */
 }
 
-/* ─────────────────────────── colour-scheme vars  */
+/* ───────────────────────── colour-scheme vars */
 :root[data-mode="light"] {
   --bg-page : #f9fafb;
   --bg-card : #ffffff;
@@ -28,7 +28,7 @@
   --border  : #374151;
 }
 
-/* ─────────────────────────── base */
+/* ───────────────────────── base */
 html { font-size: 95%; }
 body {
   margin: 0;
@@ -37,108 +37,86 @@ body {
   color: var(--fg-text);
 }
 
-/* ─────────────────────────── header */
+/* ───────────────────────── header */
 header.mod-header{
   background:var(--header-bg);
   color:#fff;
   padding:.75rem 1rem;
-  display:flex;
-  align-items:center;
-  flex-wrap:wrap;
+  display:flex;align-items:center;flex-wrap:wrap;
 }
 header.mod-header h1{margin:0;font-size:1.4rem}
 
 /* centred nav */
 header.mod-header nav.nav-center{
-  flex:1;
-  display:flex;
-  justify-content:center;
-  gap:.5rem;
-  flex-wrap:wrap;
+  flex:1;display:flex;justify-content:center;gap:.5rem;flex-wrap:wrap;
 }
 header.mod-header nav a{
-  display:inline-block;
-  padding:.45rem .9rem;
-  border:1px solid var(--accent);
-  border-radius:4px;
-  background:transparent;
-  color:var(--accent);
-  font-size:1rem;
-  text-decoration:none;
-  transition:background .15s,color .15s;
+  display:inline-block;padding:.45rem .9rem;border:1px solid var(--accent);
+  border-radius:4px;background:transparent;color:var(--accent);
+  font-size:1rem;text-decoration:none;transition:background .15s,color .15s;
 }
 header.mod-header nav a:hover{
-  background:var(--accent);
-  color:var(--accent-contr);
+  background:var(--accent);color:var(--accent-contr);
 }
 header.mod-header nav a.active,
 header.mod-header nav a.active:hover{
-  background:var(--accent);
-  color:var(--accent-contr);
-  font-weight:600;
+  background:var(--accent);color:var(--accent-contr);font-weight:600;
 }
 
-/* mode-toggle button */
+/* mode-toggle */
 .mode-toggle{
-  background:none;
-  border:none;
-  font-size:1.35rem;
-  cursor:pointer;
-  line-height:1;
-  padding:0;
-  color:var(--accent-contr);
-  transition:transform .15s;
+  background:none;border:none;font-size:1.35rem;cursor:pointer;line-height:1;
+  padding:0;color:var(--accent-contr);transition:transform .15s;
 }
-.mode-toggle:hover{ transform: scale(1.15); }
+.mode-toggle:hover{ transform:scale(1.15); }
 
-/* ─────────────────────────── layout */
+/* ───────────────────────── layout */
 main{padding:1rem}
 .card{
-  background:var(--bg-card);
-  border-radius:8px;
-  padding:1rem 1.5rem;
-  box-shadow:0 1px 4px rgba(0,0,0,.08);
-  margin-bottom:1.5rem;
+  background:var(--bg-card);border-radius:8px;padding:1rem 1.5rem;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:1.5rem;
   overflow:visible;
 }
 
-/* buttons / inputs */
+/* ───────────────────────── buttons / inputs */
 button,input,select{font-size:1rem}
 .btn{
-  background:var(--accent);
-  color:var(--accent-contr);
-  border:none;
-  padding:.4rem .9rem;
-  border-radius:4px;
-  cursor:pointer;
+  background:var(--accent);color:var(--accent-contr);border:none;
+  padding:.4rem .9rem;border-radius:4px;cursor:pointer;
 }
 .btn:disabled{opacity:.6;cursor:not-allowed}
 .btn-light{
-  background:transparent;
-  border:1px solid var(--accent);
-  color:var(--accent);
-  padding:.35rem .8rem;
-  border-radius:4px;
-  cursor:pointer;
+  background:transparent;border:1px solid var(--accent);color:var(--accent);
+  padding:.35rem .8rem;border-radius:4px;cursor:pointer;
 }
 
-/* tables */
-table{width:100%;border-collapse:collapse}
+/* ───────────────────────── task tables */
+table.tasks-table{width:100%;border-collapse:collapse}
 thead th{border-bottom:2px solid var(--border)}
 th,td{padding:.5rem .6rem;text-align:left;font-size:.95rem}
 tbody tr{border-bottom:1px solid var(--border)}
 tbody tr:nth-child(odd){background:var(--row-alt)}
-/* NEW: explicit even-row colour for clear striping */
 tbody tr:nth-child(even){background:var(--bg-card)}
+/* whole row toggles notes */
+tbody tr.clickable-row{cursor:pointer}
 
-/* feed icons */
+/* notes cell in collapsed view */
+td.notes-snippet{font-size:.85rem;line-height:1.3}
+
+/* full notes (expanded) */
+td.notes-full{
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:.75rem;
+}
+
+/* ───────────────────────── icons, alerts, spinner */
 .feed-icon{font-size:1.25rem;margin-right:.25rem;vertical-align:text-bottom}
 
-/* alerts & spinner */
 .spinner{
-  display:inline-block;width:16px;height:16px;
-  border:2px solid #fff;border-right-color:transparent;
-  border-radius:50%;animation:spin .6s linear infinite;
+  display:inline-block;width:16px;height:16px;border:2px solid #fff;
+  border-right-color:transparent;border-radius:50%;animation:spin .6s linear infinite;
   vertical-align:-3px;
 }
 @keyframes spin{100%{transform:rotate(360deg)}}
@@ -148,11 +126,8 @@ tbody tr:nth-child(even){background:var(--bg-card)}
 }
 @keyframes fadeout{0%,90%{opacity:1}100%{opacity:0}}
 
-/* ─────────────────────────── Config page */
-.config-wrap{
-  max-width:800px;          /* was 500px */
-  margin:0;                 /* flush-left */
-}
+/* ───────────────────────── Config page */
+.config-wrap{max-width:800px;margin:0;}
 .config-types{list-style:none;padding:0;text-align:center}
 .config-types li{display:inline-block;margin:0 .75rem .4rem}
 
@@ -160,19 +135,25 @@ tbody tr:nth-child(even){background:var(--bg-card)}
 @media(max-width:600px){
   html{font-size:92%}
   header.mod-header h1{font-size:1.25rem}
-  .config-wrap{max-width:100%;}          /* still fluid on phones */
+  .config-wrap{max-width:100%;}
 }
+
+/* ───────────────────────── modal   */
 .modal-backdrop{
-  position:fixed;inset:0;
-  background:rgba(0,0,0,.45);
-  display:flex;align-items:center;justify-content:center;
-  z-index:1000;
+  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.45);z-index:1000;
 }
 .modal-box{
-  background:var(--bg-card);
-  border-radius:8px;
-  padding:1.5rem 1.25rem;
-  max-width:340px;width:90%;
-  box-shadow:0 2px 10px rgba(0,0,0,.25);
-  text-align:center;
+  background:var(--bg-card,#fff);color:var(--fg-text);
+  border-radius:8px;padding:1.5rem 1.25rem;
+  max-width:340px;width:90%;text-align:center;
+  box-shadow:0 2px 12px rgba(0,0,0,.45);z-index:1001;
 }
+/* … previous rules remain unchanged … */
+
+/* ─── sortable column headers */
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{background:rgba(0,0,0,.04)}
+
+th.sort-asc::after {content:" ▲";font-size:.75em}
+th.sort-desc::after{content:" ▼";font-size:.75em}
