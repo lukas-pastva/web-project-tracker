@@ -15,25 +15,31 @@ const nameFromEmail = (email = "") =>
  * Props: { taskId, onClose }
  */
 export default function ContactList({ taskId, onClose }) {
-  const [rows, setRows] = useState([]);
-  const [form, setForm] = useState({ email: "", name: "", position: "" });
-  const [err, setErr] = useState("");
+  const [rows, setRows]   = useState([]);
+  const [err,  setErr]    = useState("");
+  const [form, setForm]   = useState({ email: "", name: "", position: "" });
 
+  /* ----------------------------------------------------------------
+   * Load / reload list
+   * -------------------------------------------------------------- */
   const reload = () =>
     api.listContacts(taskId).then(setRows).catch((e) => setErr(e.message));
 
   useEffect(reload, [taskId]);
 
-  /* ─── CRUD helpers ─────────────────────────────────────────── */
+  /* ----------------------------------------------------------------
+   * CRUD helpers
+   * -------------------------------------------------------------- */
   async function add(e) {
     e.preventDefault();
+
     const finalName =
       form.name.trim() || nameFromEmail(form.email.trim() || "");
 
     await api
       .insertContact(taskId, {
-        email: form.email.trim(),
-        name: finalName,
+        email   : form.email.trim(),
+        name    : finalName,
         position: form.position.trim() || null,
       })
       .then(() => {
@@ -47,7 +53,9 @@ export default function ContactList({ taskId, onClose }) {
     await api.deleteContact(id).then(reload).catch((e) => setErr(e.message));
   }
 
-  /* ─── UI ───────────────────────────────────────────────────── */
+  /* ----------------------------------------------------------------
+   * UI
+   * -------------------------------------------------------------- */
   return (
     <div className="modal-backdrop">
       <div className="modal-box" style={{ maxWidth: 480 }}>
@@ -55,11 +63,9 @@ export default function ContactList({ taskId, onClose }) {
 
         {err && <p style={{ color: "#c00" }}>{err}</p>}
 
-        {/* list --------------------------------------------------- */}
+        {/* ── list ─────────────────────────────────────────────── */}
         {rows.length === 0 ? (
-          <p>
-            <em>No contacts yet</em>
-          </p>
+          <p><em>No contacts yet</em></p>
         ) : (
           <table>
             <thead>
@@ -77,9 +83,7 @@ export default function ContactList({ taskId, onClose }) {
                   <td>{c.name}</td>
                   <td>{c.position || "—"}</td>
                   <td>
-                    <button className="btn-light" onClick={() => del(c.id)}>
-                      ×
-                    </button>
+                    <button className="btn-light" onClick={() => del(c.id)}>×</button>
                   </td>
                 </tr>
               ))}
@@ -87,17 +91,17 @@ export default function ContactList({ taskId, onClose }) {
           </table>
         )}
 
-        {/* add new ------------------------------------------------ */}
+        {/* ── add new ──────────────────────────────────────────── */}
         <form
           onSubmit={add}
           style={{
-            display: "flex",
-            gap: ".4rem",
-            flexWrap: "wrap",
-            marginTop: "1rem",
+            display   : "flex",
+            gap       : ".4rem",
+            flexWrap  : "wrap",
+            marginTop : "1rem",
           }}
         >
-          {/* e-mail first */} 
+          {/* email first */}
           <input
             style={{ flex: 1 }}
             placeholder="Email"
@@ -129,11 +133,15 @@ export default function ContactList({ taskId, onClose }) {
           </button>
         </form>
 
+        {/* ── close ─────────────────────────────────────────────── */}
         <button
-          type="button"      /* prevents accidental form-submit navigation */
+          type="button"                 /* prevent default form submit */
           className="btn-light"
           style={{ marginTop: "1rem" }}
-          onClick={onClose}
+          onClick={(e) => {
+            e.stopPropagation();        /* <── key fix */
+            onClose();
+          }}
         >
           Close
         </button>
