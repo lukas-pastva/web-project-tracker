@@ -10,7 +10,15 @@ const fmt = (iso) =>
     hour12: false,
   }).format(new Date(iso));
 
-const isoToInput = (iso) => iso?.slice(0, 16);
+/* NEW: convert an ISO string (stored in UTC) to the value expected by
+ * a <input type="datetime-local"> – i.e. “local time” in the browser’s TZ. */
+const isoToLocalInput = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);                                     // UTC → Date
+  const shifted = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return shifted.toISOString().slice(0, 16);                   // “YYYY-MM-DDTHH:MM”
+};
+
 const inputToIso = (val) => (val ? new Date(val).toISOString() : null);
 
 const diffMs = (a, b) => new Date(b) - new Date(a);
@@ -25,7 +33,7 @@ const fmtDuration = (ms) =>
 const nameFromEmail = (email = "") =>
   email
     .split("@")[0]
-    .split(/[^a-zA-Z]+/)
+    .split(/[^a-zA-Z]+/g)
     .filter(Boolean)
     .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
     .join(" ");
@@ -55,7 +63,8 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
   /* auto-fetch on expand */
   useEffect(() => {
     if (expandedId && contacts[expandedId] == null) loadContacts(expandedId);
-  }, [expandedId]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedId]);
 
   /* sorting ----------------------------------------------------- */
   const [sort, setSort] = useState({ key: "startedAt", asc: true });
@@ -82,8 +91,8 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     setForm({
       name: t.name,
       customer: t.customer ?? "",
-      startedAt: isoToInput(t.startedAt),
-      finishedAt: t.finishedAt ? isoToInput(t.finishedAt) : "",
+      startedAt: isoToLocalInput(t.startedAt),     // ← FIX: use local TZ
+      finishedAt: t.finishedAt ? isoToLocalInput(t.finishedAt) : "",
       notes: t.notes ?? "",
     });
     setEdit(t.id);
