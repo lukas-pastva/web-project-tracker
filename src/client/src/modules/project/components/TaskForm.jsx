@@ -131,10 +131,10 @@ export default function TaskForm({ projectId, onSave, customers, tasks }) {
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            rows={16}
+            rows={12}
+            style={{ flex: "1 1 100%" }}
             placeholder="Notes (Markdown supported)"
           />
-
           <button className="btn" disabled={!name || !start}>
             Save
           </button>
