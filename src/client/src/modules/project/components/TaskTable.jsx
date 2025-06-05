@@ -265,8 +265,8 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                           />
                           {/* bigger textarea */}
                           <textarea
-                            rows={20}
-                            style={{ flex: "1 1 100%" }}
+                            rows={24}
+                            style={{ flex: "1 1 100%", fontSize: "1.05rem" }}
                             placeholder="Notes (Markdown)"
                             value={form.notes}
                             onChange={(e) =>

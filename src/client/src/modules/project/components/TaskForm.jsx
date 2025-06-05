@@ -132,7 +132,7 @@ export default function TaskForm({ projectId, onSave, customers, tasks }) {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={12}
-            style={{ flex: "1 1 100%" }}
+            style={{ flex: "1 1 100%", fontSize: "1.05rem" }}
             placeholder="Notes (Markdown supported)"
           />
           <button className="btn" disabled={!name || !start}>
