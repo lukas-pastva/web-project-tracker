@@ -299,7 +299,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                   {expandedId === t.id && (
                     <tr>
                       <td colSpan={7} style={{ background: "var(--row-alt)" }}>
-                        {t.notes && (
+                      {t.notes && editingId !== t.id && (
                           <div className="notes-full">
                             <ReactMarkdown>{t.notes}</ReactMarkdown>
                           </div>
