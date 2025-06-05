@@ -1,27 +1,26 @@
 import React, { useState, useMemo, useEffect } from "react";
-import ReactMarkdown from "react-markdown";
-import api from "../api.js";
-import ContactList from "./ContactList.jsx";               // NEW ✅
+import ReactMarkdown       from "react-markdown";
+import api                 from "../api.js";
+import ContactList         from "./ContactList.jsx";
 
 /* ───────── helpers ───────── */
 const fmt = (iso) =>
   new Intl.DateTimeFormat(undefined, {
     dateStyle: "short",
     timeStyle: "short",
-    hour12: false,
+    hour12   : false,
   }).format(new Date(iso));
 
-/* ISO (UTC) → <input type="datetime-local"> in local TZ */
+/* ISO (UTC) → input-local */
 const isoToLocalInput = (iso) => {
   if (!iso) return "";
   const d = new Date(iso);
   const shifted = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
   return shifted.toISOString().slice(0, 16);
 };
-
 const inputToIso = (val) => (val ? new Date(val).toISOString() : null);
 
-const diffMs = (a, b) => new Date(b) - new Date(a);
+const diffMs      = (a, b) => new Date(b) - new Date(a);
 const fmtDuration = (ms) =>
   ms == null
     ? "—"
@@ -29,7 +28,6 @@ const fmtDuration = (ms) =>
         .toString()
         .padStart(2, "0")}m`;
 
-/* robust local-part → “Name Surname” */
 const nameFromEmail = (email = "") =>
   email
     .split("@")[0]
@@ -41,27 +39,26 @@ const nameFromEmail = (email = "") =>
 /* ───────── component ───────── */
 export default function TaskTable({ rows, onUpdate, onDelete }) {
   /* UI state ---------------------------------------------------- */
-  const [editingId, setEdit] = useState(null);
-  const [form, setForm] = useState({});
-  const [expandedId, setExpanded] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
-  const [contactsModal, setContactsModal] = useState(null); // NEW ✅
+  const [editingId,   setEdit]         = useState(null);
+  const [form,        setForm]         = useState({});
+  const [expandedId,  setExpanded]     = useState(null);
+  const [deleteId,    setDeleteId]     = useState(null);
+  const [contactsMod, setContactsMod]  = useState(null);
 
-  /* contacts cache (for the read-only expanded view) ------------ */
+  /* contacts cache (read-only view) ----------------------------- */
   const [contacts, setContacts] = useState({});
   const loadContacts = async (tid) => {
     const list = await api.listContacts(tid).catch(() => []);
     setContacts((c) => ({ ...c, [tid]: list }));
   };
-
-  /* auto-fetch on expand */
   useEffect(() => {
     if (expandedId && contacts[expandedId] == null) loadContacts(expandedId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedId]);
 
-  /* sorting ----------------------------------------------------- */
-  const [sort, setSort] = useState({ key: "startedAt", asc: true });
+  /* default sort: newest first ↓ */
+  const [sort, setSort] = useState({ key: "startedAt", asc: false });
+
   const sortedRows = useMemo(() => {
     const dir = sort.asc ? 1 : -1;
     return [...rows].sort((a, b) => {
@@ -78,34 +75,35 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     });
   }, [rows, sort]);
 
-  /* task edit cycle -------------------------------------------- */
+  /* task edit helpers ------------------------------------------ */
   function beginEdit(e, t) {
     e.stopPropagation();
     setForm({
-      name       : t.name,
-      customer   : t.customer ?? "",
-      startedAt  : isoToLocalInput(t.startedAt),
-      finishedAt : t.finishedAt ? isoToLocalInput(t.finishedAt) : "",
-      notes      : t.notes ?? "",
+      name      : t.name,
+      customer  : t.customer ?? "",
+      startedAt : isoToLocalInput(t.startedAt),
+      finishedAt: t.finishedAt ? isoToLocalInput(t.finishedAt) : "",
+      notes     : t.notes ?? "",
     });
     setEdit(t.id);
   }
-
   async function saveTask(e) {
     e.preventDefault();
     await onUpdate(editingId, {
-      name       : form.name,
-      customer   : form.customer,
-      startedAt  : inputToIso(form.startedAt),
-      finishedAt : form.finishedAt ? inputToIso(form.finishedAt) : null,
-      notes      : form.notes.trim() || null,
+      name      : form.name,
+      customer  : form.customer,
+      startedAt : inputToIso(form.startedAt),
+      finishedAt: form.finishedAt ? inputToIso(form.finishedAt) : null,
+      notes     : form.notes.trim() || null,
     });
     setEdit(null);
   }
 
   /* helpers */
   const hdr = (k) =>
-    `sortable${sort.key === k ? (sort.asc ? " sort-asc" : " sort-desc") : ""}`;
+    `sortable${
+      sort.key === k ? (sort.asc ? " sort-asc" : " sort-desc") : ""
+    }`;
   const toggleRow = (t) => {
     const newId = expandedId === t.id ? null : t.id;
     if (newId && contacts[newId] == null) loadContacts(newId);
@@ -123,35 +121,35 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
           <table className="tasks-table">
             <thead>
               <tr>
-                <th className={hdr("name")} onClick={() => setSort({ key: "name",       asc: sort.key==="name"       ? !sort.asc : true })}>Name</th>
-                <th className={hdr("customer")} onClick={() => setSort({ key: "customer",   asc: sort.key==="customer"   ? !sort.asc : true })}>Customer</th>
-                <th className={hdr("startedAt")} onClick={() => setSort({ key: "startedAt", asc: sort.key==="startedAt" ? !sort.asc : true })}>Start</th>
-                <th className={hdr("finishedAt")} onClick={() => setSort({ key: "finishedAt",asc: sort.key==="finishedAt"? !sort.asc : true })}>End</th>
-                <th className={hdr("duration")} onClick={() => setSort({ key: "duration",  asc: sort.key==="duration"  ? !sort.asc : true })}>Duration</th>
+                <th className={hdr("name")} onClick={() => setSort({ key:"name", asc:sort.key==="name"? !sort.asc: true })}>Name</th>
+                <th className={hdr("customer")} onClick={() => setSort({ key:"customer", asc:sort.key==="customer"? !sort.asc: true })}>Customer</th>
+                <th className={hdr("startedAt")} onClick={() => setSort({ key:"startedAt", asc:sort.key==="startedAt"? !sort.asc: true })}>Start</th>
+                <th className={hdr("finishedAt")} onClick={() => setSort({ key:"finishedAt", asc:sort.key==="finishedAt"? !sort.asc: true })}>End</th>
+                <th className={hdr("duration")} onClick={() => setSort({ key:"duration", asc:sort.key==="duration"? !sort.asc: true })}>Duration</th>
                 <th>Notes</th><th></th>
               </tr>
             </thead>
             <tbody>
               {sortedRows.map((t) => (
                 <React.Fragment key={t.id}>
-                  {/* summary row ----------------------------------- */}
+                  {/* summary ----------------------------------- */}
                   <tr className="clickable-row" onClick={() => toggleRow(t)}>
                     <td>{t.name}</td>
                     <td>{t.customer || "—"}</td>
                     <td>{fmt(t.startedAt)}</td>
                     <td>{t.finishedAt ? fmt(t.finishedAt) : "—"}</td>
-                    <td>{t.finishedAt ? fmtDuration(diffMs(t.startedAt, t.finishedAt)) : "—"}</td>
+                    <td>{t.finishedAt ? fmtDuration(diffMs(t.startedAt,t.finishedAt)) : "—"}</td>
                     <td className="notes-snippet">
                       {t.notes ? `${t.notes.slice(0,60)}${t.notes.length>60 ? "…" : ""}` : "—"}
                     </td>
                     <td style={{whiteSpace:"nowrap"}}>
                       <button className="btn-light" onClick={(e)=>beginEdit(e,t)}>Edit</button>{" "}
-                      <button className="btn-light" onClick={(e)=>{e.stopPropagation(); setDeleteId(t.id);}}>×</button>
+                      <button className="btn-light" onClick={(e)=>{e.stopPropagation();setDeleteId(t.id);}}>×</button>
                     </td>
                   </tr>
 
-                  {/* inline edit ---------------------------------- */}
-                  {editingId === t.id && (
+                  {/* inline edit, expanded view, etc. – unchanged */}
+                  {editingId===t.id && (
                     <tr>
                       <td colSpan={7}>
                         <form
@@ -185,31 +183,21 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                             value={form.notes}
                             onChange={(e)=>setForm({...form,notes:e.target.value})}
                           />
-
-                          {/* NEW: open modal on demand ----------- */}
                           <button
                             type="button"
                             className="btn-light"
-                            onClick={()=>setContactsModal(t.id)}
+                            onClick={()=>setContactsMod(t.id)}
                           >
                             Manage contacts…
                           </button>
-
                           <button className="btn">Save</button>
-                          <button
-                            type="button"
-                            className="btn-light"
-                            onClick={()=>setEdit(null)}
-                          >
-                            Cancel
-                          </button>
+                          <button type="button" className="btn-light" onClick={()=>setEdit(null)}>Cancel</button>
                         </form>
                       </td>
                     </tr>
                   )}
 
-                  {/* expanded details --------------------------- */}
-                  {expandedId === t.id && (
+                  {expandedId===t.id && (
                     <tr>
                       <td colSpan={7} style={{background:"var(--row-alt)"}}>
                         {t.notes && (
@@ -246,12 +234,11 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         )}
       </section>
 
-      {/* delete-confirm modal ------------------------------------ */}
       {deleteId!=null && (
         <div className="modal-backdrop">
           <div className="modal-box">
             <p style={{marginTop:0}}>Delete this task?</p>
-            <div style={{marginTop:"1rem",display:"flex",gap:".6rem",justifyContent:"center"}}>
+            <div style={{display:"flex",gap:".6rem",justifyContent:"center",marginTop:"1rem"}}>
               <button className="btn" onClick={async()=>{await onDelete(deleteId);setDeleteId(null);}}>Delete</button>
               <button className="btn-light" onClick={()=>setDeleteId(null)}>Cancel</button>
             </div>
@@ -259,11 +246,10 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         </div>
       )}
 
-      {/* contact-manager modal ----------------------------------- */}
-      {contactsModal && (
+      {contactsMod && (
         <ContactList
-          taskId={contactsModal}
-          onClose={()=>setContactsModal(null)}
+          taskId={contactsMod}
+          onClose={()=>setContactsMod(null)}
         />
       )}
     </>
