@@ -131,7 +131,7 @@ export default function TaskForm({ projectId, onSave, customers, tasks }) {
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            rows={6}
+            rows={16}
             placeholder="Notes (Markdown supported)"
           />
 
