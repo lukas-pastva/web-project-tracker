@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 /* ─── helpers ────────────────────────────────────────────────────── */
 const HALF_HOUR_MS = 30 * 60 * 1000;
@@ -8,113 +8,138 @@ const roundUp = (d) =>
   new Date(Math.ceil(d.getTime() / HALF_HOUR_MS) * HALF_HOUR_MS);
 
 /* date ↔︎ input conversions */
-const toInput = (date) => {
-  const z = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-              .toISOString();
-  return z.slice(0, 16);
-};
+const toInput = (date) =>
+  new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
 const fromInput = (val) => new Date(val).toISOString();
 
+/* ─── component ──────────────────────────────────────────────────── */
 export default function TaskForm({ projectId, onSave, customers, tasks }) {
-  /* ─── state ───────────────────────────────────────────────────── */
-  const [name,     setName]     = useState("");
+  /* ── state ──────────────────────────────────────────────────── */
+  const [name, setName] = useState("");
   const [customer, setCustomer] = useState("");
-  const [start,    setStart]    = useState("");
-  const [end,      setEnd]      = useState("");
-  const [notes,    setNotes]    = useState("");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [notes, setNotes] = useState("");
+
+  /* when panel opens, focus the first input */
+  const firstInputRef = useRef(null);
 
   /* pre-populate start/end once */
   useEffect(() => {
     const now = new Date();
     setStart(toInput(roundDown(now)));
-    setEnd  (toInput(roundUp(now)));
+    setEnd(toInput(roundUp(now)));
   }, []);
 
-  /* auto-fill name/notes when existing customer is chosen */
+  /* auto-fill name/notes when existing customer chosen */
   useEffect(() => {
     if (!customer) return;
-    const last = [...tasks].reverse().find(t => t.customer === customer);
+    const last = [...tasks].reverse().find((t) => t.customer === customer);
     if (last) {
-      if (!name)  setName(last.name);
+      if (!name) setName(last.name);
       if (!notes) setNotes(last.notes ?? "");
     }
-  }, [customer, tasks]); // runs when customer changes or tasks list updates
+  }, [customer, tasks, name, notes]);
 
-  /* ─── handlers ─────────────────────────────────────────────────── */
+  /* ── handlers ───────────────────────────────────────────────── */
   async function submit(e) {
     e.preventDefault();
     await onSave(projectId, {
       name,
       customer,
-      startedAt : fromInput(start),
+      startedAt: fromInput(start),
       finishedAt: end ? fromInput(end) : null,
-      notes     : notes.trim() || null,
+      notes: notes.trim() || null,
     });
-    /* reset state */
-    setName(""); setCustomer(""); setNotes("");
+
+    /* reset + close panel */
+    setName("");
+    setCustomer("");
+    setNotes("");
     const now = new Date();
     setStart(toInput(roundDown(now)));
-    setEnd  (toInput(roundUp(now)));
+    setEnd(toInput(roundUp(now)));
+    e.target.closest("details")?.removeAttribute("open");
   }
 
-  /* ─── UI ───────────────────────────────────────────────────────── */
+  /* ── UI ─────────────────────────────────────────────────────── */
   return (
-    <section className="card" style={{ maxWidth: 600 }}>
-      <h3>Add task</h3>
-      <form
-        onSubmit={submit}
-        style={{ display: "flex", flexDirection: "column", gap: ".6rem" }}
+    <details>
+      <summary
+        style={{
+          cursor: "pointer",
+          fontWeight: 600,
+          userSelect: "none",
+          marginBottom: ".6rem",
+        }}
+        onClick={() => {
+          /* focus first field when opened */
+          setTimeout(() => firstInputRef.current?.focus(), 0);
+        }}
       >
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Task name"
-          required
-        />
+        ➕ Add new task
+      </summary>
 
-        {/* customer with datalist suggestions */}
-        <input
-          list="customers"
-          value={customer}
-          onChange={(e) => setCustomer(e.target.value)}
-          placeholder="Customer"
-        />
-        <datalist id="customers">
-          {customers.map((c) => (
-            <option key={c} value={c} />
-          ))}
-        </datalist>
-
-        <label>
-          Start&nbsp;
+      <section className="card" style={{ maxWidth: 600 }}>
+        <form
+          onSubmit={submit}
+          style={{ display: "flex", flexDirection: "column", gap: ".6rem" }}
+        >
           <input
-            type="datetime-local"
-            value={start}
-            onChange={(e) => setStart(e.target.value)}
+            ref={firstInputRef}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Task name"
             required
           />
-        </label>
 
-        <label>
-          End&nbsp;
+          {/* customer with datalist suggestions */}
           <input
-            type="datetime-local"
-            value={end}
-            onChange={(e) => setEnd(e.target.value)}
+            list="customers"
+            value={customer}
+            onChange={(e) => setCustomer(e.target.value)}
+            placeholder="Customer"
           />
-        </label>
+          <datalist id="customers">
+            {customers.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
 
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={4}
-          placeholder="Notes (Markdown supported)"
-        />
+          <label>
+            Start&nbsp;
+            <input
+              type="datetime-local"
+              value={start}
+              onChange={(e) => setStart(e.target.value)}
+              required
+            />
+          </label>
 
-        <button className="btn" disabled={!name || !start}>
-          Save
-        </button>
-      </form>
-    </section>
+          <label>
+            End&nbsp;
+            <input
+              type="datetime-local"
+              value={end}
+              onChange={(e) => setEnd(e.target.value)}
+            />
+          </label>
+
+          {/* taller textarea */}
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={6}
+            placeholder="Notes (Markdown supported)"
+          />
+
+          <button className="btn" disabled={!name || !start}>
+            Save
+          </button>
+        </form>
+      </section>
+    </details>
   );
 }
