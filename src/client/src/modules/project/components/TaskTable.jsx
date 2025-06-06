@@ -27,6 +27,10 @@ const fmtDur = (ms) =>
         .toString()
         .padStart(2, "0")}m`;
 
+/* extract all Markdown image URLs */
+const imgUrls = (md = "") =>
+  Array.from(md.matchAll(/!\[[^\]]*]\(([^)]+)\)/g)).map((m) => m[1]);
+
 /* paste → upload → markdown */
 async function pasteShot(e, append) {
   const items = e.clipboardData?.items || [];
@@ -46,7 +50,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
   const [form, setForm] = useState({});
   const [expId, setExp] = useState(null);
   const [delId, setDel] = useState(null);
-  const [galSrc, setGal] = useState(null);          // gallery modal
+  const [gallery, setGallery] = useState(null); // {urls:[], idx:number}
   const [contactMod, setContactMod] = useState(null);
 
   /* contacts cache */
@@ -59,6 +63,26 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     if (expId && contacts[expId] == null) loadContacts(expId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expId]);
+
+  /* gallery keyboard navigation */
+  useEffect(() => {
+    if (!gallery) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setGallery(null);
+      if (e.key === "ArrowRight")
+        setGallery((g) => ({
+          ...g,
+          idx: (g.idx + 1) % g.urls.length,
+        }));
+      if (e.key === "ArrowLeft")
+        setGallery((g) => ({
+          ...g,
+          idx: (g.idx - 1 + g.urls.length) % g.urls.length,
+        }));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [gallery]);
 
   /* sort */
   const [sort, setSort] = useState({ key: "startedAt", asc: false });
@@ -106,18 +130,6 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
   const hdr = (k) =>
     `sortable${sort.key === k ? (sort.asc ? " sort-asc" : " sort-desc") : ""}`;
 
-  /* custom renderer: show thumbnails & hook click */
-  const mdComponents = {
-    img: ({ node, ...props }) => (
-      // eslint-disable-next-line jsx-a11y/alt-text
-      <img
-        {...props}
-        className="shot-thumb"
-        onClick={() => setGal(props.src)}
-      />
-    ),
-  };
-
   return (
     <>
       <section className="card">
@@ -155,172 +167,202 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((t) => (
-                <React.Fragment key={t.id}>
-                  {/* summary row */}
-                  <tr
-                    className="clickable-row"
-                    onClick={() => setExp(expId === t.id ? null : t.id)}
-                  >
-                    <td>{t.name}</td>
-                    <td>{t.customer || "—"}</td>
-                    <td>{fmt(t.startedAt)}</td>
-                    <td>{t.finishedAt ? fmt(t.finishedAt) : "—"}</td>
-                    <td>
-                      {t.finishedAt ? fmtDur(diff(t.startedAt, t.finishedAt)) : "—"}
-                    </td>
-                    <td className="notes-snippet">
-                      {t.notes
-                        ? `${t.notes.slice(0, 60)}${
-                            t.notes.length > 60 ? "…" : ""
-                          }`
-                        : "—"}
-                    </td>
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      <button
-                        className="btn-light"
-                        onClick={(e) => beginEdit(e, t)}
-                      >
-                        Edit
-                      </button>{" "}
-                      <button
-                        className="btn-light"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDel(t.id);
-                        }}
-                      >
-                        ×
-                      </button>
-                    </td>
-                  </tr>
+              {sorted.map((t) => {
+                /* per-task img list for gallery */
+                const imgs = imgUrls(t.notes || []);
 
-                  {/* inline edit */}
-                  {editId === t.id && (
-                    <tr>
-                      <td colSpan={7}>
-                        <form
-                          onSubmit={save}
-                          style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: ".4rem",
+                /* custom renderer with thumbnail click */
+                const mdComponents = {
+                  img: ({ node, ...props }) => (
+                    // eslint-disable-next-line jsx-a11y/alt-text
+                    <img
+                      {...props}
+                      className="shot-thumb"
+                      onClick={() =>
+                        setGallery({
+                          urls: imgs,
+                          idx: imgs.indexOf(props.src),
+                        })
+                      }
+                    />
+                  ),
+                };
+
+                return (
+                  <React.Fragment key={t.id}>
+                    {/* summary row */}
+                    <tr
+                      className="clickable-row"
+                      onClick={() => setExp(expId === t.id ? null : t.id)}
+                    >
+                      <td>{t.name}</td>
+                      <td>{t.customer || "—"}</td>
+                      <td>{fmt(t.startedAt)}</td>
+                      <td>{t.finishedAt ? fmt(t.finishedAt) : "—"}</td>
+                      <td>
+                        {t.finishedAt
+                          ? fmtDur(diff(t.startedAt, t.finishedAt))
+                          : "—"}
+                      </td>
+                      <td className="notes-snippet">
+                        {t.notes
+                          ? `${t.notes.slice(0, 60)}${
+                              t.notes.length > 60 ? "…" : ""
+                            }`
+                          : "—"}
+                      </td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <button
+                          className="btn-light"
+                          onClick={(e) => beginEdit(e, t)}
+                        >
+                          Edit
+                        </button>{" "}
+                        <button
+                          className="btn-light"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDel(t.id);
                           }}
                         >
-                          <input
-                            value={form.name}
-                            onChange={(e) =>
-                              setForm({ ...form, name: e.target.value })
-                            }
-                            required
-                          />
-                          <input
-                            value={form.customer}
-                            onChange={(e) =>
-                              setForm({ ...form, customer: e.target.value })
-                            }
-                          />
-                          <input
-                            type="datetime-local"
-                            value={form.startedAt}
-                            onChange={(e) =>
-                              setForm({ ...form, startedAt: e.target.value })
-                            }
-                            required
-                          />
-                          <input
-                            type="datetime-local"
-                            value={form.finishedAt}
-                            onChange={(e) =>
-                              setForm({ ...form, finishedAt: e.target.value })
-                            }
-                          />
-                          <textarea
-                            rows={24}
-                            style={{ flex: "1 1 100%", fontSize: "1.05rem" }}
-                            placeholder="Notes (Markdown – paste screenshots!)"
-                            value={form.notes}
-                            onChange={(e) =>
-                              setForm({ ...form, notes: e.target.value })
-                            }
-                            onPaste={(e) =>
-                              pasteShot(e, (md) =>
-                                setForm((f) => ({ ...f, notes: f.notes + md })),
-                              )
-                            }
-                          />
-
-                          <button
-                            type="button"
-                            className="btn-light"
-                            onClick={() => setContactMod(t.id)}
-                          >
-                            Manage contacts…
-                          </button>
-
-                          <button className="btn">Save</button>
-                          <button
-                            type="button"
-                            className="btn-light"
-                            onClick={() => setEdit(null)}
-                          >
-                            Cancel
-                          </button>
-                        </form>
+                          ×
+                        </button>
                       </td>
                     </tr>
-                  )}
 
-                  {/* expanded notes & contacts */}
-                  {expId === t.id && (
-                    <tr>
-                      <td colSpan={7} style={{ background: "var(--row-alt)" }}>
-                        {t.notes && editId !== t.id && (
-                          <div className="notes-full">
-                            <ReactMarkdown components={mdComponents}>
-                              {t.notes}
-                            </ReactMarkdown>
-                          </div>
-                        )}
+                    {/* inline edit */}
+                    {editId === t.id && (
+                      <tr>
+                        <td colSpan={7}>
+                          <form
+                            onSubmit={save}
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: ".4rem",
+                            }}
+                          >
+                            <input
+                              value={form.name}
+                              onChange={(e) =>
+                                setForm({ ...form, name: e.target.value })
+                              }
+                              required
+                            />
+                            <input
+                              value={form.customer}
+                              onChange={(e) =>
+                                setForm({ ...form, customer: e.target.value })
+                              }
+                            />
+                            <input
+                              type="datetime-local"
+                              value={form.startedAt}
+                              onChange={(e) =>
+                                setForm({ ...form, startedAt: e.target.value })
+                              }
+                              required
+                            />
+                            <input
+                              type="datetime-local"
+                              value={form.finishedAt}
+                              onChange={(e) =>
+                                setForm({ ...form, finishedAt: e.target.value })
+                              }
+                            />
+                            <textarea
+                              rows={24}
+                              style={{
+                                flex: "1 1 100%",
+                                fontSize: "1.05rem",
+                              }}
+                              placeholder="Notes (Markdown – paste screenshots!)"
+                              value={form.notes}
+                              onChange={(e) =>
+                                setForm({ ...form, notes: e.target.value })
+                              }
+                              onPaste={(e) =>
+                                pasteShot(e, (md) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    notes: f.notes + md,
+                                  })),
+                                )
+                              }
+                            />
 
-                        <h4 style={{ marginTop: t.notes ? "1rem" : 0 }}>
-                          Contacts
-                        </h4>
-                        <div className="contacts-box">
-                          {contacts[t.id] == null ? (
-                            <p>
-                              <em>Loading…</em>
-                            </p>
-                          ) : contacts[t.id].length ? (
-                            <table style={{ width: "100%" }}>
-                              <thead>
-                                <tr>
-                                  <th>Email</th>
-                                  <th>Name</th>
-                                  <th>Position</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {contacts[t.id].map((c) => (
-                                  <tr key={c.id}>
-                                    <td>{c.email}</td>
-                                    <td>{c.name}</td>
-                                    <td>{c.position || "—"}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          ) : (
-                            <p>
-                              <em>No contacts</em>
-                            </p>
+                            <button
+                              type="button"
+                              className="btn-light"
+                              onClick={() => setContactMod(t.id)}
+                            >
+                              Manage contacts…
+                            </button>
+
+                            <button className="btn">Save</button>
+                            <button
+                              type="button"
+                              className="btn-light"
+                              onClick={() => setEdit(null)}
+                            >
+                              Cancel
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                    )}
+
+                    {/* expanded notes & contacts */}
+                    {expId === t.id && (
+                      <tr>
+                        <td colSpan={7} style={{ background: "var(--row-alt)" }}>
+                          {t.notes && editId !== t.id && (
+                            <div className="notes-full">
+                              <ReactMarkdown components={mdComponents}>
+                                {t.notes}
+                              </ReactMarkdown>
+                            </div>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              ))}
+
+                          <h4 style={{ marginTop: t.notes ? "1rem" : 0 }}>
+                            Contacts
+                          </h4>
+                          <div className="contacts-box">
+                            {contacts[t.id] == null ? (
+                              <p>
+                                <em>Loading…</em>
+                              </p>
+                            ) : contacts[t.id].length ? (
+                              <table style={{ width: "100%" }}>
+                                <thead>
+                                  <tr>
+                                    <th>Email</th>
+                                    <th>Name</th>
+                                    <th>Position</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {contacts[t.id].map((c) => (
+                                    <tr key={c.id}>
+                                      <td>{c.email}</td>
+                                      <td>{c.name}</td>
+                                      <td>{c.position || "—"}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            ) : (
+                              <p>
+                                <em>No contacts</em>
+                              </p>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -357,14 +399,28 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
       )}
 
       {/* gallery modal */}
-      {galSrc && (
+      {gallery && (
         <div
           className="modal-backdrop"
-          onClick={() => setGal(null)}
+          onClick={() => setGallery(null)}
           style={{ cursor: "zoom-out" }}
         >
+          {/* click zones for mouse navigation */}
+          <div
+            style={{ position: "absolute", inset: 0 }}
+            onClick={(e) => {
+              const mid = window.innerWidth / 2;
+              setGallery((g) => ({
+                ...g,
+                idx:
+                  e.clientX > mid
+                    ? (g.idx + 1) % g.urls.length
+                    : (g.idx - 1 + g.urls.length) % g.urls.length,
+              }));
+            }}
+          />
           <img
-            src={galSrc}
+            src={gallery.urls[gallery.idx]}
             className="gallery-img"
             onClick={(e) => e.stopPropagation()}
           />
