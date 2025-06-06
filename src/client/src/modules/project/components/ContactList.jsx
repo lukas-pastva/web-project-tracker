@@ -13,15 +13,22 @@ const nameFromEmail = (email = "") =>
 
 export default function ContactList({ taskId, onClose }) {
   /* ─── state ───────────────────────────────────────────────── */
-  const [rows,   setRows]   = useState([]);
-  const [err,    setErr]    = useState("");
-  const [form,   setForm]   = useState({ email: "", name: "", position: "" });
-  const [delId,  setDelId]  = useState(null);     // delete-confirm modal
-  const aliveRef           = useRef(true);        // to ignore async after unmount
+  const [rows,      setRows]    = useState([]);
+  const [err,       setErr]     = useState("");
+  const [form,      setForm]    = useState({ email: "", name: "", position: "" });
 
-  /* ─── helpers ─────────────────────────────────────────────── */
+  /* inline edit */
+  const [editId,    setEditId]  = useState(null);
+  const [editRow,   setEditRow] = useState({});
+
+  /* delete-confirm modal */
+  const [delId,     setDelId]   = useState(null);
+
+  /* ignore async after unmount */
+  const aliveRef                 = useRef(true);
   const safeSet = (fn) => (...args) => aliveRef.current && fn(...args);
 
+  /* ─── load data ───────────────────────────────────────────── */
   const reload = () =>
     api
       .listContacts(taskId)
@@ -31,17 +38,18 @@ export default function ContactList({ taskId, onClose }) {
   useEffect(() => {
     reload();
     return () => {
-      aliveRef.current = false;   // stop all setState after unmount
+      aliveRef.current = false;
     };
-  }, [taskId]);                   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [taskId]);                          // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* ─── CRUD helpers ────────────────────────────────────────── */
   async function add(e) {
     e.preventDefault();
     const finalName = form.name.trim() || nameFromEmail(form.email.trim() || "");
     await api
       .insertContact(taskId, {
-        email: form.email.trim(),
-        name: finalName,
+        email   : form.email.trim(),
+        name    : finalName,
         position: form.position.trim() || null,
       })
       .then(reload)
@@ -49,16 +57,33 @@ export default function ContactList({ taskId, onClose }) {
     safeSet(setForm)({ email: "", name: "", position: "" });
   }
 
+  async function saveEdit(id) {
+    const { email, name, position } = editRow;
+    if (!email.trim() || !name.trim()) return;
+    await api
+      .updateContact(id, {
+        email   : email.trim(),
+        name    : name.trim(),
+        position: position.trim() || null,
+      })
+      .then(reload)
+      .catch((e) => safeSet(setErr)(e.message));
+    safeSet(setEditId)(null);
+  }
+
   async function confirmDelete() {
     if (delId == null) return;
-    await api.deleteContact(delId).then(reload).catch((e) => safeSet(setErr)(e.message));
+    await api
+      .deleteContact(delId)
+      .then(reload)
+      .catch((e) => safeSet(setErr)(e.message));
     safeSet(setDelId)(null);
   }
 
   /* ─── modal markup (portal) ───────────────────────────────── */
   const modal = (
     <div className="modal-backdrop">
-      <div className="modal-box" style={{ maxWidth: 480 }}>
+      <div className="modal-box" style={{ maxWidth: 520 }}>
         <h3 style={{ marginTop: 0 }}>Contacts</h3>
 
         {err && <p style={{ color: "#c00" }}>{err}</p>}
@@ -69,7 +94,7 @@ export default function ContactList({ taskId, onClose }) {
             <em>No contacts yet</em>
           </p>
         ) : (
-          <table>
+          <table style={{ width: "100%" }}>
             <thead>
               <tr>
                 <th>Email</th>
@@ -79,18 +104,74 @@ export default function ContactList({ taskId, onClose }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.email}</td>
-                  <td>{c.name}</td>
-                  <td>{c.position || "—"}</td>
-                  <td>
-                    <button className="btn-light" onClick={() => setDelId(c.id)}>
-                      ×
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {rows.map((c) =>
+                editId === c.id ? (
+                  /* inline edit row */
+                  <tr key={c.id}>
+                    <td>
+                      <input
+                        value={editRow.email}
+                        onChange={(e) =>
+                          setEditRow({ ...editRow, email: e.target.value })
+                        }
+                        required
+                      />
+                    </td>
+                    <td>
+                      <input
+                        value={editRow.name}
+                        onChange={(e) =>
+                          setEditRow({ ...editRow, name: e.target.value })
+                        }
+                        required
+                      />
+                    </td>
+                    <td>
+                      <input
+                        value={editRow.position || ""}
+                        onChange={(e) =>
+                          setEditRow({ ...editRow, position: e.target.value })
+                        }
+                      />
+                    </td>
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <button className="btn" onClick={() => saveEdit(c.id)}>
+                        Save
+                      </button>{" "}
+                      <button
+                        className="btn-light"
+                        onClick={() => setEditId(null)}
+                      >
+                        Cancel
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  /* normal row */
+                  <tr key={c.id}>
+                    <td>{c.email}</td>
+                    <td>{c.name}</td>
+                    <td>{c.position || "—"}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <button
+                        className="btn-light"
+                        onClick={() => {
+                          setEditId(c.id);
+                          setEditRow(c);
+                        }}
+                      >
+                        Edit
+                      </button>{" "}
+                      <button
+                        className="btn-light"
+                        onClick={() => setDelId(c.id)}
+                      >
+                        ×
+                      </button>
+                    </td>
+                  </tr>
+                )
+              )}
             </tbody>
           </table>
         )}
