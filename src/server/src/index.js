@@ -30,6 +30,8 @@ const uploadDir = process.env.SCREENSHOT_DIR
   ? path.resolve(process.env.SCREENSHOT_DIR)
   : path.join(__dirname, "../uploads");
 
+console.log("🖼  Upload dir:", uploadDir);
+
 fs.mkdirSync(uploadDir, { recursive: true });
 
 /* static access */
