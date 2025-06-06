@@ -163,3 +163,24 @@ th.sortable:hover{background:rgba(0,0,0,.04)}
 
 th.sort-asc::after {content:" ▲";font-size:.75em}
 th.sort-desc::after{content:" ▼";font-size:.75em}
+
+.shot-thumb{
+  max-width:160px;
+  max-height:160px;
+  object-fit:cover;
+  cursor:pointer;
+  border:1px solid var(--border);
+  border-radius:6px;
+  margin:.25rem;
+  transition:transform .15s;
+}
+.shot-thumb:hover{ transform:scale(1.05); }
+
+/* full-screen gallery */
+.gallery-img{
+  max-width:90vw;
+  max-height:90vh;
+  object-fit:contain;
+  border-radius:8px;
+  box-shadow:0 2px 12px rgba(0,0,0,.6);
+}

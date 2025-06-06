@@ -11,25 +11,24 @@ const fmt = (iso) =>
     hour12: false,
   }).format(new Date(iso));
 
-/* ISO (UTC) → <input type="datetime-local"> in local TZ */
-const isoToLocalInput = (iso) =>
+const isoToLocal = (iso) =>
   iso
     ? new Date(new Date(iso).getTime() - new Date().getTimezoneOffset() * 60000)
         .toISOString()
         .slice(0, 16)
     : "";
-const inputToIso = (val) => (val ? new Date(val).toISOString() : null);
+const toIso = (v) => (v ? new Date(v).toISOString() : null);
 
-const diffMs = (a, b) => new Date(b) - new Date(a);
-const fmtDuration = (ms) =>
+const diff = (a, b) => new Date(b) - new Date(a);
+const fmtDur = (ms) =>
   ms == null
     ? "—"
     : `${Math.floor(ms / 3_600_000)}h ${(Math.floor(ms / 60_000) % 60)
         .toString()
         .padStart(2, "0")}m`;
 
-/* clipboard → upload → markdown */
-async function pasteScreenshot(e, append) {
+/* paste → upload → markdown */
+async function pasteShot(e, append) {
   const items = e.clipboardData?.items || [];
   for (const it of items)
     if (it.type.startsWith("image/")) {
@@ -42,33 +41,33 @@ async function pasteScreenshot(e, append) {
 
 /* ───────── component ───────── */
 export default function TaskTable({ rows, onUpdate, onDelete }) {
-  /* UI state ---------------------------------------------------- */
-  const [editingId, setEdit] = useState(null);
+  /* UI state */
+  const [editId, setEdit] = useState(null);
   const [form, setForm] = useState({});
-  const [expandedId, setExpanded] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
-  const [contactsMod, setContactsMod] = useState(null);
+  const [expId, setExp] = useState(null);
+  const [delId, setDel] = useState(null);
+  const [galSrc, setGal] = useState(null);          // gallery modal
+  const [contactMod, setContactMod] = useState(null);
 
-  /* contacts cache (read-only) --------------------------------- */
+  /* contacts cache */
   const [contacts, setContacts] = useState({});
-  const loadContacts = async (tid) => {
-    const list = await api.listContacts(tid).catch(() => []);
-    setContacts((c) => ({ ...c, [tid]: list }));
+  const loadContacts = async (id) => {
+    const list = await api.listContacts(id).catch(() => []);
+    setContacts((c) => ({ ...c, [id]: list }));
   };
   useEffect(() => {
-    if (expandedId && contacts[expandedId] == null) loadContacts(expandedId);
+    if (expId && contacts[expId] == null) loadContacts(expId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expandedId]);
+  }, [expId]);
 
-  /* default sort: newest first ↓ */
+  /* sort */
   const [sort, setSort] = useState({ key: "startedAt", asc: false });
-
-  const sortedRows = useMemo(() => {
+  const sorted = useMemo(() => {
     const dir = sort.asc ? 1 : -1;
     return [...rows].sort((a, b) => {
       if (sort.key === "duration") {
-        const dx = diffMs(a.startedAt, a.finishedAt);
-        const dy = diffMs(b.startedAt, b.finishedAt);
+        const dx = diff(a.startedAt, a.finishedAt);
+        const dy = diff(b.startedAt, b.finishedAt);
         return dx === dy ? 0 : dx > dy ? dir : -dir;
       }
       const x = a[sort.key],
@@ -80,47 +79,50 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     });
   }, [rows, sort]);
 
-  /* task edit helpers ------------------------------------------ */
+  /* edit helpers */
   function beginEdit(e, t) {
     e.stopPropagation();
     setForm({
       name: t.name,
       customer: t.customer ?? "",
-      startedAt: isoToLocalInput(t.startedAt),
-      finishedAt: t.finishedAt ? isoToLocalInput(t.finishedAt) : "",
+      startedAt: isoToLocal(t.startedAt),
+      finishedAt: t.finishedAt ? isoToLocal(t.finishedAt) : "",
       notes: t.notes ?? "",
     });
     setEdit(t.id);
   }
-  async function saveTask(e) {
+  async function save(e) {
     e.preventDefault();
-    await onUpdate(editingId, {
+    await onUpdate(editId, {
       name: form.name,
       customer: form.customer,
-      startedAt: inputToIso(form.startedAt),
-      finishedAt: form.finishedAt ? inputToIso(form.finishedAt) : null,
+      startedAt: toIso(form.startedAt),
+      finishedAt: form.finishedAt ? toIso(form.finishedAt) : null,
       notes: form.notes.trim() || null,
     });
     setEdit(null);
   }
 
-  /* helpers */
   const hdr = (k) =>
-    `sortable${
-      sort.key === k ? (sort.asc ? " sort-asc" : " sort-desc") : ""
-    }`;
-  const toggleRow = (t) => {
-    const newId = expandedId === t.id ? null : t.id;
-    if (newId && contacts[newId] == null) loadContacts(newId);
-    setExpanded(newId);
+    `sortable${sort.key === k ? (sort.asc ? " sort-asc" : " sort-desc") : ""}`;
+
+  /* custom renderer: show thumbnails & hook click */
+  const mdComponents = {
+    img: ({ node, ...props }) => (
+      // eslint-disable-next-line jsx-a11y/alt-text
+      <img
+        {...props}
+        className="shot-thumb"
+        onClick={() => setGal(props.src)}
+      />
+    ),
   };
 
-  /* ───────── render ───────── */
   return (
     <>
       <section className="card">
         <h3>Tasks</h3>
-        {sortedRows.length === 0 ? (
+        {sorted.length === 0 ? (
           <p>
             <em>No tasks yet</em>
           </p>
@@ -153,18 +155,19 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
               </tr>
             </thead>
             <tbody>
-              {sortedRows.map((t) => (
+              {sorted.map((t) => (
                 <React.Fragment key={t.id}>
-                  {/* summary row ----------------------------------- */}
-                  <tr className="clickable-row" onClick={() => toggleRow(t)}>
+                  {/* summary row */}
+                  <tr
+                    className="clickable-row"
+                    onClick={() => setExp(expId === t.id ? null : t.id)}
+                  >
                     <td>{t.name}</td>
                     <td>{t.customer || "—"}</td>
                     <td>{fmt(t.startedAt)}</td>
                     <td>{t.finishedAt ? fmt(t.finishedAt) : "—"}</td>
                     <td>
-                      {t.finishedAt
-                        ? fmtDuration(diffMs(t.startedAt, t.finishedAt))
-                        : "—"}
+                      {t.finishedAt ? fmtDur(diff(t.startedAt, t.finishedAt)) : "—"}
                     </td>
                     <td className="notes-snippet">
                       {t.notes
@@ -184,7 +187,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                         className="btn-light"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setDeleteId(t.id);
+                          setDel(t.id);
                         }}
                       >
                         ×
@@ -192,12 +195,12 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     </td>
                   </tr>
 
-                  {/* inline edit ---------------------------------- */}
-                  {editingId === t.id && (
+                  {/* inline edit */}
+                  {editId === t.id && (
                     <tr>
                       <td colSpan={7}>
                         <form
-                          onSubmit={saveTask}
+                          onSubmit={save}
                           style={{
                             display: "flex",
                             flexWrap: "wrap",
@@ -232,20 +235,16 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                               setForm({ ...form, finishedAt: e.target.value })
                             }
                           />
-                          {/* bigger textarea */}
                           <textarea
                             rows={24}
-                            style={{
-                              flex: "1 1 100%",
-                              fontSize: "1.05rem",
-                            }}
+                            style={{ flex: "1 1 100%", fontSize: "1.05rem" }}
                             placeholder="Notes (Markdown – paste screenshots!)"
                             value={form.notes}
                             onChange={(e) =>
                               setForm({ ...form, notes: e.target.value })
                             }
                             onPaste={(e) =>
-                              pasteScreenshot(e, (md) =>
+                              pasteShot(e, (md) =>
                                 setForm((f) => ({ ...f, notes: f.notes + md })),
                               )
                             }
@@ -254,7 +253,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                           <button
                             type="button"
                             className="btn-light"
-                            onClick={() => setContactsMod(t.id)}
+                            onClick={() => setContactMod(t.id)}
                           >
                             Manage contacts…
                           </button>
@@ -272,15 +271,18 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     </tr>
                   )}
 
-                  {/* expanded details --------------------------- */}
-                  {expandedId === t.id && (
+                  {/* expanded notes & contacts */}
+                  {expId === t.id && (
                     <tr>
                       <td colSpan={7} style={{ background: "var(--row-alt)" }}>
-                        {t.notes && editingId !== t.id && (
+                        {t.notes && editId !== t.id && (
                           <div className="notes-full">
-                            <ReactMarkdown>{t.notes}</ReactMarkdown>
+                            <ReactMarkdown components={mdComponents}>
+                              {t.notes}
+                            </ReactMarkdown>
                           </div>
                         )}
+
                         <h4 style={{ marginTop: t.notes ? "1rem" : 0 }}>
                           Contacts
                         </h4>
@@ -324,8 +326,8 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         )}
       </section>
 
-      {/* delete-confirm modal ------------------------------------ */}
-      {deleteId != null && (
+      {/* delete-confirm */}
+      {delId != null && (
         <div className="modal-backdrop">
           <div className="modal-box">
             <p style={{ marginTop: 0 }}>Delete this task?</p>
@@ -340,16 +342,13 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
               <button
                 className="btn"
                 onClick={async () => {
-                  await onDelete(deleteId);
-                  setDeleteId(null);
+                  await onDelete(delId);
+                  setDel(null);
                 }}
               >
                 Delete
               </button>
-              <button
-                className="btn-light"
-                onClick={() => setDeleteId(null)}
-              >
+              <button className="btn-light" onClick={() => setDel(null)}>
                 Cancel
               </button>
             </div>
@@ -357,9 +356,24 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         </div>
       )}
 
-      {/* contact-manager modal ----------------------------------- */}
-      {contactsMod && (
-        <ContactList taskId={contactsMod} onClose={() => setContactsMod(null)} />
+      {/* gallery modal */}
+      {galSrc && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setGal(null)}
+          style={{ cursor: "zoom-out" }}
+        >
+          <img
+            src={galSrc}
+            className="gallery-img"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+
+      {/* contacts modal */}
+      {contactMod && (
+        <ContactList taskId={contactMod} onClose={() => setContactMod(null)} />
       )}
     </>
   );
