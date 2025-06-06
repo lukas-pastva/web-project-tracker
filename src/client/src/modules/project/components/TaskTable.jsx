@@ -3,13 +3,14 @@ import ReactMarkdown from "react-markdown";
 import api from "../api.js";
 import ContactList from "./ContactList.jsx";
 
-/* ───────── helpers (unchanged) ───────── */
+/* ───────── helpers ───────── */
 const fmt = (iso) =>
   new Intl.DateTimeFormat(undefined, {
     dateStyle: "short",
     timeStyle: "short",
     hour12: false,
   }).format(new Date(iso));
+
 const isoToLocal = (iso) =>
   iso
     ? new Date(new Date(iso).getTime() - new Date().getTimezoneOffset() * 60000)
@@ -17,6 +18,7 @@ const isoToLocal = (iso) =>
         .slice(0, 16)
     : "";
 const toIso = (v) => (v ? new Date(v).toISOString() : null);
+
 const diff = (a, b) => new Date(b) - new Date(a);
 const fmtDur = (ms) =>
   ms == null
@@ -24,6 +26,7 @@ const fmtDur = (ms) =>
     : `${Math.floor(ms / 3_600_000)}h ${(Math.floor(ms / 60_000) % 60)
         .toString()
         .padStart(2, "0")}m`;
+
 const imgUrls = (md = "") =>
   Array.from(md.matchAll(/!\[[^\]]*]\(([^)]+)\)/g)).map((m) => m[1]);
 
@@ -49,15 +52,35 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
   const [gallery, setGallery] = useState(null);
   const [contactMod, setContactMod] = useState(null);
 
-  /* contacts cache (unchanged) */
+  /* contacts cache */
   const [contacts, setContacts] = useState({});
-  const loadContacts = async (id) =>
-    setContacts((c) => ({ ...c, [id]: await api.listContacts(id).catch(() => []) }));
+  const loadContacts = async (id) => {
+    const list = await api.listContacts(id).catch(() => []);
+    setContacts((c) => ({ ...c, [id]: list }));
+  };
   useEffect(() => {
     if (expId && contacts[expId] == null) loadContacts(expId);
-  }, [expId]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expId]);
 
-  /* ─── AUTOSAVE ⏲️ ─────────────────────────────────────────── */
+  /* gallery keyboard navigation */
+  useEffect(() => {
+    if (!gallery) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setGallery(null);
+      if (e.key === "ArrowRight")
+        setGallery((g) => ({ ...g, idx: (g.idx + 1) % g.urls.length }));
+      if (e.key === "ArrowLeft")
+        setGallery((g) => ({
+          ...g,
+          idx: (g.idx - 1 + g.urls.length) % g.urls.length,
+        }));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [gallery]);
+
+  /* ─── AUTOSAVE (debounced) ─────────────────────────────────── */
   const saveTimer = useRef(null);
   useEffect(() => {
     if (editId == null) return;
@@ -70,11 +93,11 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         finishedAt: form.finishedAt ? toIso(form.finishedAt) : null,
         notes: form.notes.trim() || null,
       });
-    }, 800); // debounce
+    }, 800);
     return () => clearTimeout(saveTimer.current);
   }, [form, editId, onUpdate]);
 
-  /* sorting (unchanged) */
+  /* sorting */
   const [sort, setSort] = useState({ key: "startedAt", asc: false });
   const sorted = useMemo(() => {
     const dir = sort.asc ? 1 : -1;
@@ -93,11 +116,10 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     });
   }, [rows, sort]);
 
-  /* helpers */
   const hdr = (k) =>
     `sortable${sort.key === k ? (sort.asc ? " sort-asc" : " sort-desc") : ""}`;
 
-  /* begin inline edit */
+  /* start inline edit */
   function beginEdit(e, t) {
     e.stopPropagation();
     setForm({
@@ -206,7 +228,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                       </td>
                     </tr>
 
-                    {/* inline edit (now autosaves) */}
+                    {/* inline edit */}
                     {editId === t.id && (
                       <tr>
                         <td colSpan={7}>
@@ -291,7 +313,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                       </tr>
                     )}
 
-                    {/* expanded details (unchanged) */}
+                    {/* expanded section */}
                     {expId === t.id && (
                       <tr>
                         <td colSpan={7} style={{ background: "var(--row-alt)" }}>
@@ -347,7 +369,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         )}
       </section>
 
-      {/* delete-confirm (unchanged) */}
+      {/* delete-confirm modal */}
       {delId != null && (
         <div className="modal-backdrop">
           <div className="modal-box">
@@ -377,7 +399,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         </div>
       )}
 
-      {/* gallery modal (unchanged) */}
+      {/* gallery modal */}
       {gallery && (
         <div
           className="modal-backdrop"
@@ -405,7 +427,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         </div>
       )}
 
-      {/* contacts modal (unchanged) */}
+      {/* contacts modal */}
       {contactMod && (
         <ContactList taskId={contactMod} onClose={() => setContactMod(null)} />
       )}
