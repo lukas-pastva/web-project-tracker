@@ -27,8 +27,19 @@ const fmtDur = (ms) =>
         .toString()
         .padStart(2, "0")}m`;
 
-const imgUrls = (md = "") =>
-  Array.from(md.matchAll(/!\[[^\]]*]\(([^)]+)\)/g)).map((m) => m[1]);
+/**
+ * Extract all Markdown image URLs (fallback for environments
+ * without String.prototype.matchAll).
+ */
+function imgUrls(md = "") {
+  const urls = [];
+  const regex = /!\[[^\]]*]\(([^)]+)\)/g;
+  let match;
+  while ((match = regex.exec(md)) !== null) {
+    urls.push(match[1]);
+  }
+  return urls;
+}
 
 /* clipboard → upload → markdown */
 async function pasteShot(e, append) {
@@ -162,7 +173,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                         ? "End"
                         : k.charAt(0).toUpperCase() + k.slice(1)}
                     </th>
-                  ),
+                  )
                 )}
                 <th>Notes</th>
                 <th></th>
@@ -170,7 +181,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
             </thead>
             <tbody>
               {sorted.map((t) => {
-                const imgs = imgUrls(t.notes || []);
+                const imgs = imgUrls(t.notes || "");
                 const mdComponents = {
                   img: ({ node, ...props }) => (
                     // eslint-disable-next-line jsx-a11y/alt-text
@@ -286,10 +297,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                               }
                               onPaste={(e) =>
                                 pasteShot(e, (md) =>
-                                  setForm((f) => ({
-                                    ...f,
-                                    notes: f.notes + md,
-                                  })),
+                                  setForm((f) => ({ ...f, notes: f.notes + md }))
                                 )
                               }
                             />
@@ -316,7 +324,10 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     {/* expanded section */}
                     {expId === t.id && (
                       <tr>
-                        <td colSpan={7} style={{ background: "var(--row-alt)" }}>
+                        <td
+                          colSpan={7}
+                          style={{ background: "var(--row-alt)" }}
+                        >
                           {t.notes && editId !== t.id && (
                             <div className="notes-full">
                               <ReactMarkdown components={mdComponents}>
