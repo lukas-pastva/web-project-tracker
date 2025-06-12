@@ -192,7 +192,7 @@ export default function ConfigPage() {
             </ul>
           )}
 
-          {/* add new project ---------------------------------------- */}
+          {/* add new project --------------------------------------- */}
           <div style={{ display: "flex", gap: ".6rem" }}>
             <input
               value={newProj}
@@ -219,16 +219,20 @@ export default function ConfigPage() {
             )}
           </div>
 
-          {/* ── download-all-images button ───────────────────── */}
-          <div style={{ marginTop: "1rem" }}>
-            <a className="btn-light" href="/api/images.zip">
-              Download all images&nbsp;(zip)
+          {/* global images download icon --------------------------- */}
+          <div style={{ textAlign: "right", marginTop: ".8rem" }}>
+            <a
+              className="btn-icon"
+              href="/api/images.zip"
+              title="Download every uploaded image (zip)"
+            >
+              ⬇︎
             </a>
           </div>
         </section>
       </main>
 
-      {/* ─── delete-confirm modal ────────────────────────────────── */}
+      {/* ─── delete-confirm modal ──────────────────────────────── */}
       {deleteId !== null && (
         <div className="modal-backdrop">
           <div className="modal-box">
@@ -236,7 +240,12 @@ export default function ConfigPage() {
               Delete this project?<br />
               <small>All its tasks will be removed.</small>
             </p>
-            <div style={{ marginTop: "1rem", display: "flex", gap: ".6rem", justifyContent: "center" }}>
+            <div style={{
+              marginTop: "1rem",
+              display: "flex",
+              gap: ".6rem",
+              justifyContent: "center",
+            }}>
               <button
                 className="btn"
                 onClick={async () => {

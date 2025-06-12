@@ -1,11 +1,11 @@
-import express          from "express";
-import cors             from "cors";
-import path             from "path";
-import fs               from "fs";
+import express           from "express";
+import cors              from "cors";
+import path              from "path";
+import fs                from "fs";
 import { fileURLToPath } from "url";
-import dotenv           from "dotenv";
-import multer           from "multer";
-import archiver         from "archiver";
+import dotenv            from "dotenv";
+import multer            from "multer";
+import archiver          from "archiver";
 
 import projectRoutes  from "./modules/project/routes.js";
 import { syncProject } from "./modules/project/seed.js";
@@ -59,18 +59,18 @@ app.post("/api/uploads", upload.single("file"), (req, res) => {
   res.json({ url: `/uploads/${req.file.filename}` });
 });
 
-/* ─── NEW: download-images endpoints ───────────────────────────── */
+/* ─── helper utilities ─────────────────────────────────────────── */
 
-/* helper – extract “/uploads/…” URLs from markdown notes */
+/* extract “/uploads/…” URLs from markdown notes */
 function uploadsInMarkdown(md = "") {
+  const urls = new Set();
   const re   = /\/uploads\/([^)\s]+)/g;
-  const out  = new Set();
   let m;
-  while ((m = re.exec(md)) !== null) out.add(m[1]);
-  return out;
+  while ((m = re.exec(md)) !== null) urls.add(m[1]);
+  return urls;
 }
 
-/* ZIP all image files and stream the archive */
+/* stream a bunch of files as a ZIP */
 function streamZip(res, files, zipName) {
   res.setHeader("Content-Type", "application/zip");
   res.setHeader(
@@ -93,16 +93,20 @@ function streamZip(res, files, zipName) {
   archive.finalize();
 }
 
-/* per-project images */
+/* ─── NEW download-images endpoints ────────────────────────────── */
+
+/* all images in one project */
 app.get("/api/projects/:pid/images.zip", async (req, res) => {
   try {
     const tasks = await Task.findAll({
-      where      : { projectId: req.params.pid },
-      attributes : ["notes"],
+      where     : { projectId: req.params.pid },
+      attributes: ["notes"],
     });
 
     const files = new Set();
-    tasks.forEach((t) => uploadsInMarkdown(t.notes).forEach((f) => files.add(f)));
+    tasks.forEach((t) =>
+      uploadsInMarkdown(t.notes).forEach((f) => files.add(f))
+    );
 
     if (files.size === 0)
       return res.status(404).json({ error: "No images for this project" });
@@ -114,7 +118,24 @@ app.get("/api/projects/:pid/images.zip", async (req, res) => {
   }
 });
 
-/* ALL images across the app */
+/* all images in one task */
+app.get("/api/tasks/:tid/images.zip", async (req, res) => {
+  try {
+    const task = await Task.findByPk(req.params.tid, { attributes: ["notes"] });
+    if (!task) return res.status(404).json({ error: "Task not found" });
+
+    const files = [...uploadsInMarkdown(task.notes)];
+    if (files.length === 0)
+      return res.status(404).json({ error: "No images for this task" });
+
+    streamZip(res, files, `task-${req.params.tid}-images.zip`);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/* every image ever uploaded */
 app.get("/api/images.zip", (_req, res) => {
   try {
     const files = fs
@@ -132,11 +153,10 @@ app.get("/api/images.zip", (_req, res) => {
   }
 });
 
-/* ─── API routes ───────────────────────────────────────────────── */
+/* ─── API routes & SPA fallback ────────────────────────────────── */
 app.use(projectRoutes);
 app.use(configRoutes);
 
-/* serve SPA */
 app.use(express.static(path.join(__dirname, "../public")));
 app.get("*", (_req, res) =>
   res.sendFile(path.join(__dirname, "../public/index.html"))

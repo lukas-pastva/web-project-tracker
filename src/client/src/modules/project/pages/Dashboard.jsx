@@ -20,7 +20,6 @@ export default function ProjectDashboard() {
   const update = (id, b)   => api.updateTask(id,  b).then(reload).catch(e => setErr(e.message));
   const del    = id        => api.deleteTask(id)  .then(reload).catch(e => setErr(e.message));
 
-  /* unique customers for this project */
   const customers = useMemo(
     () => [...new Set(tasks.map(t => t.customer).filter(Boolean))],
     [tasks],
@@ -32,10 +31,14 @@ export default function ProjectDashboard() {
       {err && <p style={{ color: "#c00", padding: "0 1rem" }}>{err}</p>}
 
       <main>
-        {/* ── download-images button ───────────────────────── */}
-        <div style={{ padding: "0 1rem", marginBottom: "1rem" }}>
-          <a className="btn-light" href={`/api/projects/${pid}/images.zip`}>
-            Download images&nbsp;(zip)
+        {/* subtle, icon-only project download */}
+        <div style={{ textAlign:"right", padding:"0 1rem .3rem" }}>
+          <a
+            className="btn-icon"
+            href={`/api/projects/${pid}/images.zip`}
+            title="Download all images for this project (zip)"
+          >
+            ⬇︎
           </a>
         </div>
 
@@ -43,13 +46,13 @@ export default function ProjectDashboard() {
           projectId={pid}
           onSave={save}
           customers={customers}
-          tasks={tasks /* used for auto-fill */}
+          tasks={tasks}
         />
         <TaskTable
           rows={tasks}
           onUpdate={update}
           onDelete={del}
-          customers={customers /* used in inline edit list */}
+          customers={customers}
         />
       </main>
     </>

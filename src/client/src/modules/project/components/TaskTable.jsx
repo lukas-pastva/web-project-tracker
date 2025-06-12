@@ -28,8 +28,7 @@ const fmtDur = (ms) =>
         .padStart(2, "0")}m`;
 
 /**
- * Extract all Markdown image URLs (fallback for environments
- * without String.prototype.matchAll).
+ * Extract all Markdown image URLs.
  */
 function imgUrls(md = "") {
   const urls = [];
@@ -56,12 +55,12 @@ async function pasteShot(e, append) {
 /* ───────── component ───────── */
 export default function TaskTable({ rows, onUpdate, onDelete }) {
   /* UI state */
-  const [editId, setEdit] = useState(null);
-  const [form, setForm] = useState({});
-  const [expId, setExp] = useState(null);
-  const [delId, setDel] = useState(null);
-  const [gallery, setGallery] = useState(null);
-  const [contactMod, setContactMod] = useState(null);
+  const [editId, setEdit]         = useState(null);
+  const [form,   setForm]         = useState({});
+  const [expId,  setExp]          = useState(null);
+  const [delId,  setDel]          = useState(null);
+  const [gallery,     setGallery] = useState(null);
+  const [contactMod,  setContactMod] = useState(null);
 
   /* contacts cache */
   const [contacts, setContacts] = useState({});
@@ -98,11 +97,11 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       onUpdate(editId, {
-        name: form.name,
-        customer: form.customer,
-        startedAt: toIso(form.startedAt),
-        finishedAt: form.finishedAt ? toIso(form.finishedAt) : null,
-        notes: form.notes.trim() || null,
+        name       : form.name,
+        customer   : form.customer,
+        startedAt  : toIso(form.startedAt),
+        finishedAt : form.finishedAt ? toIso(form.finishedAt) : null,
+        notes      : form.notes.trim() || null,
       });
     }, 800);
     return () => clearTimeout(saveTimer.current);
@@ -118,11 +117,10 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         const dy = diff(b.startedAt, b.finishedAt);
         return dx === dy ? 0 : dx > dy ? dir : -dir;
       }
-      const x = a[sort.key],
-        y = b[sort.key];
+      const x = a[sort.key], y = b[sort.key];
       if (x == null && y == null) return 0;
       if (x == null) return -dir;
-      if (y == null) return dir;
+      if (y == null) return  dir;
       return x > y ? dir : -dir;
     });
   }, [rows, sort]);
@@ -134,11 +132,11 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
   function beginEdit(e, t) {
     e.stopPropagation();
     setForm({
-      name: t.name,
-      customer: t.customer ?? "",
-      startedAt: isoToLocal(t.startedAt),
-      finishedAt: t.finishedAt ? isoToLocal(t.finishedAt) : "",
-      notes: t.notes ?? "",
+      name       : t.name,
+      customer   : t.customer ?? "",
+      startedAt  : isoToLocal(t.startedAt),
+      finishedAt : t.finishedAt ? isoToLocal(t.finishedAt) : "",
+      notes      : t.notes ?? "",
     });
     setEdit(t.id);
   }
@@ -148,33 +146,29 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
       <section className="card">
         <h3>Tasks</h3>
         {sorted.length === 0 ? (
-          <p>
-            <em>No tasks yet</em>
-          </p>
+          <p><em>No tasks yet</em></p>
         ) : (
           <table className="tasks-table">
             <thead>
               <tr>
-                {["name", "customer", "startedAt", "finishedAt", "duration"].map(
-                  (k) => (
-                    <th
-                      key={k}
-                      className={hdr(k)}
-                      onClick={() =>
-                        setSort({
-                          key: k,
-                          asc: sort.key === k ? !sort.asc : true,
-                        })
-                      }
-                    >
-                      {k === "startedAt"
-                        ? "Start"
-                        : k === "finishedAt"
-                        ? "End"
-                        : k.charAt(0).toUpperCase() + k.slice(1)}
-                    </th>
-                  )
-                )}
+                {["name","customer","startedAt","finishedAt","duration"].map((k) => (
+                  <th
+                    key={k}
+                    className={hdr(k)}
+                    onClick={() =>
+                      setSort({
+                        key : k,
+                        asc : sort.key === k ? !sort.asc : true,
+                      })
+                    }
+                  >
+                    {k === "startedAt"
+                      ? "Start"
+                      : k === "finishedAt"
+                      ? "End"
+                      : k.charAt(0).toUpperCase() + k.slice(1)}
+                  </th>
+                ))}
                 <th>Notes</th>
                 <th></th>
               </tr>
@@ -191,7 +185,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                       onClick={() =>
                         setGallery({
                           urls: imgs,
-                          idx: imgs.indexOf(props.src),
+                          idx : imgs.indexOf(props.src),
                         })
                       }
                     />
@@ -220,10 +214,23 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                             }`
                           : "—"}
                       </td>
+
+                      {/* actions: download, edit, delete */}
                       <td style={{ whiteSpace: "nowrap" }}>
+                        <a
+                          href={`/api/tasks/${t.id}/images.zip`}
+                          className="btn-icon"
+                          title="Download images for this task (zip)"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          ⬇︎
+                        </a>{" "}
                         <button
                           className="btn-light"
-                          onClick={(e) => beginEdit(e, t)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            beginEdit(e, t);
+                          }}
                         >
                           Edit
                         </button>{" "}
@@ -278,18 +285,12 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                               type="datetime-local"
                               value={form.finishedAt}
                               onChange={(e) =>
-                                setForm({
-                                  ...form,
-                                  finishedAt: e.target.value,
-                                })
+                                setForm({ ...form, finishedAt: e.target.value })
                               }
                             />
                             <textarea
                               rows={24}
-                              style={{
-                                flex: "1 1 100%",
-                                fontSize: "1.05rem",
-                              }}
+                              style={{ flex: "1 1 100%", fontSize: "1.05rem" }}
                               placeholder="Notes (Markdown – autosaved)"
                               value={form.notes}
                               onChange={(e) =>
@@ -324,10 +325,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     {/* expanded section */}
                     {expId === t.id && (
                       <tr>
-                        <td
-                          colSpan={7}
-                          style={{ background: "var(--row-alt)" }}
-                        >
+                        <td colSpan={7} style={{ background: "var(--row-alt)" }}>
                           {t.notes && editId !== t.id && (
                             <div className="notes-full">
                               <ReactMarkdown components={mdComponents}>
@@ -341,9 +339,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                           </h4>
                           <div className="contacts-box">
                             {contacts[t.id] == null ? (
-                              <p>
-                                <em>Loading…</em>
-                              </p>
+                              <p><em>Loading…</em></p>
                             ) : contacts[t.id].length ? (
                               <table style={{ width: "100%" }}>
                                 <thead>
@@ -364,9 +360,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                                 </tbody>
                               </table>
                             ) : (
-                              <p>
-                                <em>No contacts</em>
-                              </p>
+                              <p><em>No contacts</em></p>
                             )}
                           </div>
                         </td>
@@ -385,14 +379,12 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         <div className="modal-backdrop">
           <div className="modal-box">
             <p style={{ marginTop: 0 }}>Delete this task?</p>
-            <div
-              style={{
-                marginTop: "1rem",
-                display: "flex",
-                gap: ".6rem",
-                justifyContent: "center",
-              }}
-            >
+            <div style={{
+              marginTop: "1rem",
+              display: "flex",
+              gap: ".6rem",
+              justifyContent: "center",
+            }}>
               <button
                 className="btn"
                 onClick={async () => {
