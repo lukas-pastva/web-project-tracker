@@ -92,11 +92,18 @@ function streamZip(res, pushFn, zipName) {
   archive.finalize();
 }
 
-/* append an image file if it exists (skip silently otherwise) */
+/* append an image file if it exists (skip silently otherwise)
+   NOTE: path **inside the ZIP** must always use POSIX “/” separators */
 function appendImage(archive, fname, prefix = "") {
   const fp = path.join(uploadDir, fname);
-  if (fs.existsSync(fp))
-    archive.file(fp, { name: path.join(prefix, fname) });
+  if (!fs.existsSync(fp)) return;
+
+  /* correct path for the archive – POSIX join avoids “\” on Windows */
+  const zipName = prefix
+    ? path.posix.join(prefix, fname)
+    : fname;
+
+  archive.file(fp, { name: zipName });
 }
 
 /* ─── task-level archive ───────────────────────────────────────── */
@@ -111,29 +118,26 @@ app.get("/api/tasks/:tid/images.zip", async (req, res) => {
     if (imgFiles.length === 0 && !task.notes && task.contacts.length === 0)
       return res.status(404).json({ error: "No assets for this task" });
 
-    streamZip(
-      res,
-      (zip) => {
-        /* images */
-        imgFiles.forEach((f) => appendImage(zip, f));
+    streamZip(res, (zip) => {
+      /* images */
+      imgFiles.forEach((f) => appendImage(zip, f));
 
-        /* notes */
-        if (task.notes) zip.append(task.notes, { name: "notes.md" });
+      /* notes */
+      if (task.notes) zip.append(task.notes, { name: "notes.md" });
 
-        /* contacts */
-        if (task.contacts.length) {
-          const rows = task.contacts.map((c) => [
-            c.email,
-            c.name,
-            c.position || "",
-          ]);
-          zip.append(csv(rows, ["email", "name", "position"]), {
-            name: "contacts.csv",
-          });
-        }
-      },
-      `task-${task.id}-assets.zip`
-    );
+      /* contacts */
+      if (task.contacts.length) {
+        const rows = task.contacts.map((c) => [
+          c.email,
+          c.name,
+          c.position || "",
+        ]);
+        zip.append(
+          csv(rows, ["email", "name", "position"]),
+          { name: "contacts.csv" }
+        );
+      }
+    }, `task-${task.id}-assets.zip`);
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
@@ -141,53 +145,50 @@ app.get("/api/tasks/:tid/images.zip", async (req, res) => {
 });
 
 /* ─── project-level archive ────────────────────────────────────── */
-/*  FIXED: every image now lives under its own “task-{id}/” folder  */
+/*  FIX #2 – images live **inside** their own “task-{id}/” folder   */
 app.get("/api/projects/:pid/images.zip", async (req, res) => {
   try {
     const tasks = await Task.findAll({
-      where  : { projectId: req.params.pid },
-      include: [{ model: Contact, attributes: ["email", "name", "position"] }],
-      order  : [["id", "ASC"]],
+      where   : { projectId: req.params.pid },
+      include : [{ model: Contact, attributes: ["email", "name", "position"] }],
+      order   : [["id", "ASC"]],
     });
     if (tasks.length === 0)
       return res.status(404).json({ error: "Project not found or empty" });
 
     let hasAnything = false;
 
-    streamZip(
-      res,
-      (zip) => {
-        tasks.forEach((t) => {
-          const pref = `task-${t.id}`;
+    streamZip(res, (zip) => {
+      tasks.forEach((t) => {
+        const pref = `task-${t.id}`;
 
-          /* notes */
-          if (t.notes) {
-            hasAnything = true;
-            zip.append(t.notes, { name: `${pref}/notes.md` });
-          }
+        /* notes */
+        if (t.notes) {
+          hasAnything = true;
+          zip.append(t.notes, { name: `${pref}/notes.md` });
+        }
 
-          /* contacts */
-          if (t.contacts.length) {
-            hasAnything = true;
-            const rows = t.contacts.map((c) => [
-              c.email,
-              c.name,
-              c.position || "",
-            ]);
-            zip.append(csv(rows, ["email", "name", "position"]), {
-              name: `${pref}/contacts.csv`,
-            });
-          }
+        /* contacts */
+        if (t.contacts.length) {
+          hasAnything = true;
+          const rows = t.contacts.map((c) => [
+            c.email,
+            c.name,
+            c.position || "",
+          ]);
+          zip.append(
+            csv(rows, ["email", "name", "position"]),
+            { name: `${pref}/contacts.csv` }
+          );
+        }
 
-          /* images – placed inside the same task folder */
-          uploadsInMarkdown(t.notes).forEach((f) => {
-            hasAnything = true;
-            appendImage(zip, f, pref);           // <— prefix keeps images tidy
-          });
+        /* images – now stored in the same task folder */
+        uploadsInMarkdown(t.notes).forEach((f) => {
+          hasAnything = true;
+          appendImage(zip, f, pref);            // 👈 prefix keeps them nested
         });
-      },
-      `project-${req.params.pid}-assets.zip`
-    );
+      });
+    }, `project-${req.params.pid}-assets.zip`);
 
     if (!hasAnything)
       return res.status(404).json({ error: "No assets for this project" });
@@ -208,8 +209,8 @@ app.get("/api/images.zip", async (_req, res) => {
     const contacts = await Contact.findAll({
       include: [
         {
-          model     : Task,
-          include   : [{ model: Project }],
+          model      : Task,
+          include    : [{ model: Project }],
         },
       ],
     });
@@ -217,27 +218,23 @@ app.get("/api/images.zip", async (_req, res) => {
     if (imgFiles.length === 0 && contacts.length === 0)
       return res.status(404).json({ error: "No assets found" });
 
-    streamZip(
-      res,
-      (zip) => {
-        imgFiles.forEach((f) => appendImage(zip, f));
+    streamZip(res, (zip) => {
+      imgFiles.forEach((f) => appendImage(zip, f));   // images really included
 
-        if (contacts.length) {
-          const rows = contacts.map((c) => [
-            c.email,
-            c.name,
-            c.position || "",
-            c.task?.customer || "",
-            c.task?.project?.name || "",
-          ]);
-          zip.append(
-            csv(rows, ["email", "name", "position", "customer", "project"]),
-            { name: "contacts.csv" }
-          );
-        }
-      },
-      "all-assets.zip"
-    );
+      if (contacts.length) {
+        const rows = contacts.map((c) => [
+          c.email,
+          c.name,
+          c.position || "",
+          c.task?.customer || "",
+          c.task?.project?.name || "",
+        ]);
+        zip.append(
+          csv(rows, ["email", "name", "position", "customer", "project"]),
+          { name: "contacts.csv" }
+        );
+      }
+    }, "all-assets.zip");
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
