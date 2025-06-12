@@ -12,23 +12,25 @@ export default function ProjectDashboard() {
   const [tasks, setTasks] = useState([]);
   const [err,   setErr]   = useState("");
 
+  /* load tasks */
   const reload = () =>
-    api.listTasks(pid).then(setTasks).catch(e => setErr(e.message));
+    api.listTasks(pid).then(setTasks).catch((e) => setErr(e.message));
   useEffect(reload, [pid]);
 
-  const save   = (_, body) => api.insertTask(pid, body).then(reload).catch(e => setErr(e.message));
-  const update = (id, b)   => api.updateTask(id,  b).then(reload).catch(e => setErr(e.message));
-  const del    = id        => api.deleteTask(id)  .then(reload).catch(e => setErr(e.message));
+  const save   = (_, body) => api.insertTask(pid, body).then(reload).catch((e) => setErr(e.message));
+  const update = (id, b)   => api.updateTask(id,  b).then(reload).catch((e) => setErr(e.message));
+  const del    = (id)      => api.deleteTask(id)  .then(reload).catch((e) => setErr(e.message));
 
+  /* unique customers for autocomplete */
   const customers = useMemo(
-    () => [...new Set(tasks.map(t => t.customer).filter(Boolean))],
-    [tasks],
+    () => [...new Set(tasks.map((t) => t.customer).filter(Boolean))],
+    [tasks]
   );
 
   return (
     <>
       <Header />
-      {err && <p style={{ color: "#c00", padding: "0 1rem" }}>{err}</p>}
+      {err && <p style={{ color:"#c00", padding:"0 1rem" }}>{err}</p>}
 
       <main>
         {/* subtle, icon-only project download */}
@@ -36,7 +38,7 @@ export default function ProjectDashboard() {
           <a
             className="btn-icon"
             href={`/api/projects/${pid}/images.zip`}
-            title="Download all images for this project (zip)"
+            title="Download project assets (images, notes, contacts)"
           >
             ⬇︎
           </a>
@@ -52,7 +54,6 @@ export default function ProjectDashboard() {
           rows={tasks}
           onUpdate={update}
           onDelete={del}
-          customers={customers}
         />
       </main>
     </>

@@ -10,36 +10,35 @@ import {
 export default function ConfigPage() {
   /* ─── global settings ───────────────────────────────────────── */
   const init = loadConfig();
-  const [theme, setTheme]   = useState(init.theme    ?? "technical");
-  const [mode,  setMode]    = useState(init.mode     ?? "auto");
-  const [title, setTitle]   = useState(init.appTitle ?? "Project-Tracker");
-  const [saved, setSaved]   = useState(false);
+  const [theme, setTheme] = useState(init.theme ?? "technical");
+  const [mode,  setMode]  = useState(init.mode  ?? "auto");
+  const [title, setTitle] = useState(init.appTitle ?? "Project-Tracker");
+  const [saved, setSaved] = useState(false);
 
-  /* ─── project CRUD ─────────────────────────────────────────── */
+  /* ─── projects list & CRUD ──────────────────────────────────── */
   const [projects,  setProjects]  = useState([]);
   const [newProj,   setNewProj]   = useState("");
 
   const [editingId, setEditingId] = useState(null);
   const [editName,  setEditName]  = useState("");
 
-  /* modal for delete */
   const [deleteId,  setDeleteId]  = useState(null);
 
-  /* initial load */
+  /* load projects on mount */
   useEffect(() => { reloadProj(); }, []);
-
   const reloadProj = () =>
     fetch("/api/projects")
       .then((r) => r.json())
       .then(setProjects)
       .catch(() => setProjects([]));
 
+  /* CRUD helpers ------------------------------------------------ */
   async function addProject() {
     if (!newProj.trim()) return;
     const r = await fetch("/api/projects", {
       method : "POST",
-      headers: { "Content-Type": "application/json" },
-      body   : JSON.stringify({ name: newProj.trim() }),
+      headers: { "Content-Type":"application/json" },
+      body   : JSON.stringify({ name:newProj.trim() }),
     });
     if (r.ok) {
       setNewProj("");
@@ -52,8 +51,8 @@ export default function ConfigPage() {
     if (!name.trim()) return;
     const r = await fetch(`/api/projects/${id}`, {
       method : "PUT",
-      headers: { "Content-Type": "application/json" },
-      body   : JSON.stringify({ name: name.trim() }),
+      headers: { "Content-Type":"application/json" },
+      body   : JSON.stringify({ name:name.trim() }),
     });
     if (r.ok) {
       setEditingId(null);
@@ -63,7 +62,7 @@ export default function ConfigPage() {
   }
 
   async function confirmDeleteProject(id) {
-    const r = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+    const r = await fetch(`/api/projects/${id}`, { method:"DELETE" });
     if (r.ok || r.status === 204) {
       reloadProj();
       window.dispatchEvent(new Event("projectsUpdated"));
@@ -87,7 +86,7 @@ export default function ConfigPage() {
     <>
       <Header />
       <main>
-        <section className="card config-wrap" style={{ maxWidth: 600 }}>
+        <section className="card config-wrap" style={{ maxWidth:600 }}>
           <h2>Configuration</h2>
 
           {/* title -------------------------------------------------- */}
@@ -95,8 +94,8 @@ export default function ConfigPage() {
           <input value={title} onChange={(e) => setTitle(e.target.value)} />
 
           {/* theme -------------------------------------------------- */}
-          <h3 style={{ marginTop: "1.2rem" }}>Theme</h3>
-          <label style={{ marginRight: "1rem" }}>
+          <h3 style={{ marginTop:"1.2rem" }}>Theme</h3>
+          <label style={{ marginRight:"1rem" }}>
             <input
               type="radio"
               name="theme"
@@ -116,9 +115,9 @@ export default function ConfigPage() {
           </label>
 
           {/* colour-scheme ----------------------------------------- */}
-          <h3 style={{ marginTop: "1.2rem" }}>Colour-scheme mode</h3>
-          {["light", "dark", "auto"].map((m) => (
-            <label key={m} style={{ marginRight: "1rem" }}>
+          <h3 style={{ marginTop:"1.2rem" }}>Colour-scheme mode</h3>
+          {["light","dark","auto"].map((m) => (
+            <label key={m} style={{ marginRight:"1rem" }}>
               <input
                 type="radio"
                 name="mode"
@@ -129,20 +128,20 @@ export default function ConfigPage() {
             </label>
           ))}
 
-          {/* projects ---------------------------------------------- */}
-          <h3 style={{ marginTop: "1.2rem" }}>Projects</h3>
+          {/* projects list ----------------------------------------- */}
+          <h3 style={{ marginTop:"1.2rem" }}>Projects</h3>
           {projects.length === 0 ? (
             <p><em>No projects yet</em></p>
           ) : (
-            <ul style={{ listStyle: "none", paddingLeft: 0 }}>
+            <ul style={{ listStyle:"none", paddingLeft:0 }}>
               {projects.map((p) => (
                 <li
                   key={p.id}
                   style={{
-                    display      : "flex",
-                    alignItems   : "center",
-                    gap          : ".4rem",
-                    marginBottom : ".35rem",
+                    display      :"flex",
+                    alignItems   :"center",
+                    gap          :".4rem",
+                    marginBottom :".35rem",
                   }}
                 >
                   {editingId === p.id ? (
@@ -150,7 +149,7 @@ export default function ConfigPage() {
                       <input
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
-                        style={{ flex: 1 }}
+                        style={{ flex:1 }}
                         autoFocus
                       />
                       <button
@@ -169,7 +168,7 @@ export default function ConfigPage() {
                     </>
                   ) : (
                     <>
-                      <span style={{ flex: 1 }}>{p.name}</span>
+                      <span style={{ flex:1 }}>{p.name}</span>
                       <button
                         className="btn-light"
                         onClick={() => {
@@ -193,12 +192,12 @@ export default function ConfigPage() {
           )}
 
           {/* add new project --------------------------------------- */}
-          <div style={{ display: "flex", gap: ".6rem" }}>
+          <div style={{ display:"flex", gap:".6rem" }}>
             <input
               value={newProj}
               onChange={(e) => setNewProj(e.target.value)}
               placeholder="New project name"
-              style={{ flex: 1 }}
+              style={{ flex:1 }}
             />
             <button
               className="btn"
@@ -210,21 +209,21 @@ export default function ConfigPage() {
           </div>
 
           {/* save global config ------------------------------------ */}
-          <div style={{ marginTop: "1.5rem" }}>
+          <div style={{ marginTop:"1.5rem" }}>
             <button className="btn" onClick={save}>Save config</button>
             {saved && (
-              <span className="msg-success" style={{ marginLeft: ".6rem" }}>
+              <span className="msg-success" style={{ marginLeft:".6rem" }}>
                 ✓ Saved
               </span>
             )}
           </div>
 
-          {/* global images download icon --------------------------- */}
-          <div style={{ textAlign: "right", marginTop: ".8rem" }}>
+          {/* global assets download -------------------------------- */}
+          <div style={{ textAlign:"right", marginTop:".8rem" }}>
             <a
               className="btn-icon"
               href="/api/images.zip"
-              title="Download every uploaded image (zip)"
+              title="Download ALL assets (images, notes, contacts)"
             >
               ⬇︎
             </a>
@@ -232,19 +231,19 @@ export default function ConfigPage() {
         </section>
       </main>
 
-      {/* ─── delete-confirm modal ──────────────────────────────── */}
+      {/* delete-confirm modal ------------------------------------- */}
       {deleteId !== null && (
         <div className="modal-backdrop">
           <div className="modal-box">
-            <p style={{ marginTop: 0 }}>
+            <p style={{ marginTop:0 }}>
               Delete this project?<br />
               <small>All its tasks will be removed.</small>
             </p>
             <div style={{
-              marginTop: "1rem",
-              display: "flex",
-              gap: ".6rem",
-              justifyContent: "center",
+              marginTop:"1rem",
+              display:"flex",
+              gap:".6rem",
+              justifyContent:"center",
             }}>
               <button
                 className="btn"

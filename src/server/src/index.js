@@ -7,13 +7,13 @@ import dotenv            from "dotenv";
 import multer            from "multer";
 import archiver          from "archiver";
 
-import projectRoutes  from "./modules/project/routes.js";
+import projectRoutes   from "./modules/project/routes.js";
 import { syncProject } from "./modules/project/seed.js";
 
-import configRoutes   from "./modules/config/routes.js";
-import { syncConfig } from "./modules/config/seed.js";
+import configRoutes    from "./modules/config/routes.js";
+import { syncConfig }  from "./modules/config/seed.js";
 
-import { Task } from "./modules/project/model.js";
+import { Task, Contact, Project } from "./modules/project/model.js";
 
 /* ─── bootstrap ────────────────────────────────────────────────── */
 dotenv.config();
@@ -59,9 +59,9 @@ app.post("/api/uploads", upload.single("file"), (req, res) => {
   res.json({ url: `/uploads/${req.file.filename}` });
 });
 
-/* ─── helper utilities ─────────────────────────────────────────── */
+/* ─── helpers ──────────────────────────────────────────────────── */
 
-/* extract “/uploads/…” URLs from markdown notes */
+/* grab “/uploads/….*” URLs from Markdown */
 function uploadsInMarkdown(md = "") {
   const urls = new Set();
   const re   = /\/uploads\/([^)\s]+)/g;
@@ -70,13 +70,16 @@ function uploadsInMarkdown(md = "") {
   return urls;
 }
 
-/* stream a bunch of files as a ZIP */
-function streamZip(res, files, zipName) {
+/* basic CSV encoder (quoted) */
+function csv(rows, headers) {
+  const esc = (v = "") => `"${String(v).replace(/"/g, '""')}"`;
+  return [headers, ...rows].map((r) => r.map(esc).join(",")).join("\n");
+}
+
+/* push files/strings into a ZIP and stream it */
+function streamZip(res, pushFn, zipName) {
   res.setHeader("Content-Type", "application/zip");
-  res.setHeader(
-    "Content-Disposition",
-    `attachment; filename="${zipName}"`
-  );
+  res.setHeader("Content-Disposition", `attachment; filename="${zipName}"`);
 
   const archive = archiver("zip", { zlib: { level: 9 } });
   archive.on("error", (err) => {
@@ -85,68 +88,150 @@ function streamZip(res, files, zipName) {
   });
   archive.pipe(res);
 
-  files.forEach((f) => {
-    const fp = path.join(uploadDir, f);
-    if (fs.existsSync(fp)) archive.file(fp, { name: f });
-  });
-
+  pushFn(archive);
   archive.finalize();
 }
 
-/* ─── NEW download-images endpoints ────────────────────────────── */
+/* append an image file if it exists (skip silently otherwise) */
+function appendImage(archive, fname, prefix = "") {
+  const fp = path.join(uploadDir, fname);
+  if (fs.existsSync(fp))
+    archive.file(fp, { name: path.join(prefix, fname) });
+}
 
-/* all images in one project */
+/* ─── task-level archive ───────────────────────────────────────── */
+app.get("/api/tasks/:tid/images.zip", async (req, res) => {
+  try {
+    const task = await Task.findByPk(req.params.tid, {
+      include: [{ model: Contact, attributes: ["email", "name", "position"] }],
+    });
+    if (!task) return res.status(404).json({ error: "Task not found" });
+
+    const imgFiles = [...uploadsInMarkdown(task.notes)];
+    if (imgFiles.length === 0 && !task.notes && task.contacts.length === 0)
+      return res.status(404).json({ error: "No assets for this task" });
+
+    streamZip(res, (zip) => {
+      /* images */
+      imgFiles.forEach((f) => appendImage(zip, f));
+
+      /* notes */
+      if (task.notes)
+        zip.append(task.notes, { name: "notes.md" });
+
+      /* contacts */
+      if (task.contacts.length) {
+        const rows = task.contacts.map((c) => [
+          c.email,
+          c.name,
+          c.position || "",
+        ]);
+        zip.append(
+          csv(rows, ["email", "name", "position"]),
+          { name: "contacts.csv" }
+        );
+      }
+    }, `task-${task.id}-assets.zip`);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/* ─── project-level archive ────────────────────────────────────── */
 app.get("/api/projects/:pid/images.zip", async (req, res) => {
   try {
     const tasks = await Task.findAll({
-      where     : { projectId: req.params.pid },
-      attributes: ["notes"],
+      where   : { projectId: req.params.pid },
+      include : [{ model: Contact, attributes: ["email", "name", "position"] }],
+      order   : [["id", "ASC"]],
     });
+    if (tasks.length === 0)
+      return res.status(404).json({ error: "Project not found or empty" });
 
-    const files = new Set();
-    tasks.forEach((t) =>
-      uploadsInMarkdown(t.notes).forEach((f) => files.add(f))
-    );
+    let hasAnything = false;
 
-    if (files.size === 0)
-      return res.status(404).json({ error: "No images for this project" });
+    streamZip(res, (zip) => {
+      const allImages = new Set();
 
-    streamZip(res, [...files], `project-${req.params.pid}-images.zip`);
+      tasks.forEach((t) => {
+        const pref = `task-${t.id}`;
+
+        /* notes */
+        if (t.notes) {
+          hasAnything = true;
+          zip.append(t.notes, { name: `${pref}/notes.md` });
+        }
+
+        /* contacts */
+        if (t.contacts.length) {
+          hasAnything = true;
+          const rows = t.contacts.map((c) => [
+            c.email,
+            c.name,
+            c.position || "",
+          ]);
+          zip.append(
+            csv(rows, ["email", "name", "position"]),
+            { name: `${pref}/contacts.csv` }
+          );
+        }
+
+        /* images (dedup across tasks) */
+        uploadsInMarkdown(t.notes).forEach((f) => allImages.add(f));
+      });
+
+      allImages.forEach((f) => {
+        hasAnything = true;
+        appendImage(zip, f);
+      });
+    }, `project-${req.params.pid}-assets.zip`);
+
+    if (!hasAnything)
+      return res.status(404).json({ error: "No assets for this project" });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
   }
 });
 
-/* all images in one task */
-app.get("/api/tasks/:tid/images.zip", async (req, res) => {
+/* ─── global archive (all uploads + contacts) ─────────────────── */
+app.get("/api/images.zip", async (_req, res) => {
   try {
-    const task = await Task.findByPk(req.params.tid, { attributes: ["notes"] });
-    if (!task) return res.status(404).json({ error: "Task not found" });
-
-    const files = [...uploadsInMarkdown(task.notes)];
-    if (files.length === 0)
-      return res.status(404).json({ error: "No images for this task" });
-
-    streamZip(res, files, `task-${req.params.tid}-images.zip`);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-/* every image ever uploaded */
-app.get("/api/images.zip", (_req, res) => {
-  try {
-    const files = fs
+    const imgFiles = fs
       .readdirSync(uploadDir, { withFileTypes: true })
       .filter((d) => d.isFile())
       .map((d) => d.name);
 
-    if (files.length === 0)
-      return res.status(404).json({ error: "No images found" });
+    const contacts = await Contact.findAll({
+      include: [
+        {
+          model: Task,
+          include: [{ model: Project }],
+        },
+      ],
+    });
 
-    streamZip(res, files, "all-images.zip");
+    if (imgFiles.length === 0 && contacts.length === 0)
+      return res.status(404).json({ error: "No assets found" });
+
+    streamZip(res, (zip) => {
+      imgFiles.forEach((f) => appendImage(zip, f));
+
+      if (contacts.length) {
+        const rows = contacts.map((c) => [
+          c.email,
+          c.name,
+          c.position || "",
+          c.task?.customer || "",
+          c.task?.project?.name || "",
+        ]);
+        zip.append(
+          csv(rows, ["email", "name", "position", "customer", "project"]),
+          { name: "contacts.csv" }
+        );
+      }
+    }, "all-assets.zip");
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
