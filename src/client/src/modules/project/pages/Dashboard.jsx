@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import Header from "../../../components/Header.jsx";
-import api from "../api.js";
-import TaskForm from "../components/TaskForm.jsx";
-import TaskTable from "../components/TaskTable.jsx";
+import Header      from "../../../components/Header.jsx";
+import api         from "../api.js";
+import TaskForm    from "../components/TaskForm.jsx";
+import TaskTable   from "../components/TaskTable.jsx";
 
 export default function ProjectDashboard() {
   const { projectId } = useParams();
@@ -32,6 +32,13 @@ export default function ProjectDashboard() {
       {err && <p style={{ color: "#c00", padding: "0 1rem" }}>{err}</p>}
 
       <main>
+        {/* ── download-images button ───────────────────────── */}
+        <div style={{ padding: "0 1rem", marginBottom: "1rem" }}>
+          <a className="btn-light" href={`/api/projects/${pid}/images.zip`}>
+            Download images&nbsp;(zip)
+          </a>
+        </div>
+
         <TaskForm
           projectId={pid}
           onSave={save}

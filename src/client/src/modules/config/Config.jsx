@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Fragment } from "react";
+import React, { useState, useEffect } from "react";
 import Header from "../../components/Header.jsx";
 import {
   loadConfig,
@@ -8,14 +8,14 @@ import {
 } from "../../config.js";
 
 export default function ConfigPage() {
-  /* ─── global settings ─────────────────────────────────────────── */
+  /* ─── global settings ───────────────────────────────────────── */
   const init = loadConfig();
   const [theme, setTheme]   = useState(init.theme    ?? "technical");
   const [mode,  setMode]    = useState(init.mode     ?? "auto");
   const [title, setTitle]   = useState(init.appTitle ?? "Project-Tracker");
   const [saved, setSaved]   = useState(false);
 
-  /* ─── project CRUD ────────────────────────────────────────────── */
+  /* ─── project CRUD ─────────────────────────────────────────── */
   const [projects,  setProjects]  = useState([]);
   const [newProj,   setNewProj]   = useState("");
 
@@ -82,7 +82,7 @@ export default function ConfigPage() {
     setTimeout(() => setSaved(false), 2000);
   }
 
-  /* ─── UI ──────────────────────────────────────────────────────── */
+  /* ─── UI ────────────────────────────────────────────────────── */
   return (
     <>
       <Header />
@@ -90,11 +90,11 @@ export default function ConfigPage() {
         <section className="card config-wrap" style={{ maxWidth: 600 }}>
           <h2>Configuration</h2>
 
-          {/* title --------------------------------------------------- */}
+          {/* title -------------------------------------------------- */}
           <h3>Application title</h3>
           <input value={title} onChange={(e) => setTitle(e.target.value)} />
 
-          {/* theme --------------------------------------------------- */}
+          {/* theme -------------------------------------------------- */}
           <h3 style={{ marginTop: "1.2rem" }}>Theme</h3>
           <label style={{ marginRight: "1rem" }}>
             <input
@@ -115,7 +115,7 @@ export default function ConfigPage() {
             /> Jira-like
           </label>
 
-          {/* colour-scheme ------------------------------------------ */}
+          {/* colour-scheme ----------------------------------------- */}
           <h3 style={{ marginTop: "1.2rem" }}>Colour-scheme mode</h3>
           {["light", "dark", "auto"].map((m) => (
             <label key={m} style={{ marginRight: "1rem" }}>
@@ -129,7 +129,7 @@ export default function ConfigPage() {
             </label>
           ))}
 
-          {/* projects ------------------------------------------------ */}
+          {/* projects ---------------------------------------------- */}
           <h3 style={{ marginTop: "1.2rem" }}>Projects</h3>
           {projects.length === 0 ? (
             <p><em>No projects yet</em></p>
@@ -209,7 +209,7 @@ export default function ConfigPage() {
             </button>
           </div>
 
-          {/* save global config ------------------------------------- */}
+          {/* save global config ------------------------------------ */}
           <div style={{ marginTop: "1.5rem" }}>
             <button className="btn" onClick={save}>Save config</button>
             {saved && (
@@ -217,6 +217,13 @@ export default function ConfigPage() {
                 ✓ Saved
               </span>
             )}
+          </div>
+
+          {/* ── download-all-images button ───────────────────── */}
+          <div style={{ marginTop: "1rem" }}>
+            <a className="btn-light" href="/api/images.zip">
+              Download all images&nbsp;(zip)
+            </a>
           </div>
         </section>
       </main>
