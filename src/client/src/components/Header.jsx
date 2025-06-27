@@ -1,15 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
 
-/**
- * Global header with dynamic project navigation.
- * Listens for the custom `projectsUpdated` event so the menu
- * refreshes instantly after a project is created/renamed/deleted.
- */
 export default function Header() {
-  const params = useParams();
-  const location = useLocation();
-
+  const params    = useParams();
+  const location  = useLocation();
   const [projects, setProjects] = useState([]);
 
   const loadProjects = () =>
@@ -19,11 +13,13 @@ export default function Header() {
       .catch(() => setProjects([]));
 
   useEffect(() => {
-    loadProjects();                       // first load
-    const h = () => loadProjects();       // subsequent updates
+    loadProjects();
+    const h = () => loadProjects();
     window.addEventListener("projectsUpdated", h);
     return () => window.removeEventListener("projectsUpdated", h);
   }, []);
+
+  const isActive = (path) => location.pathname === path;
 
   return (
     <header className="mod-header">
@@ -39,22 +35,19 @@ export default function Header() {
             {p.name}
           </a>
         ))}
-        <a
-          href="/contacts"
-          className={location.pathname === "/contacts" ? "active" : ""}
-        >
+
+        {/* NEW Work link */}
+        <a href="/work" className={isActive("/work") ? "active" : ""}>
+          Work
+        </a>
+
+        <a href="/contacts" className={isActive("/contacts") ? "active" : ""}>
           Contacts
         </a>
-        <a
-          href="/config"
-          className={location.pathname === "/config" ? "active" : ""}
-        >
+        <a href="/config"   className={isActive("/config")   ? "active" : ""}>
           Config
         </a>
-        <a
-          href="/help"
-          className={location.pathname === "/help" ? "active" : ""}
-        >
+        <a href="/help"     className={isActive("/help")     ? "active" : ""}>
           Help
         </a>
       </nav>
