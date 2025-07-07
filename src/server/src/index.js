@@ -30,42 +30,37 @@ const port = process.env.PORT || 8080;
 app.use(cors());
 app.use(express.json());
 
-/* ─── screenshots upload dir ───────────────────────────────────── */
+/* ─── uploads dir (images **and** other files) ──────────────────── */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadDir = process.env.SCREENSHOT_DIR
   ? path.resolve(process.env.SCREENSHOT_DIR)
   : path.join(__dirname, "../uploads");
 
-console.log("🖼  Upload dir:", uploadDir);
+console.log("📂  Upload dir:", uploadDir);
 fs.mkdirSync(uploadDir, { recursive: true });
 
 /* static access */
 app.use("/uploads", express.static(uploadDir));
 
-/* ─── upload endpoint (PNG/JPEG) ───────────────────────────────── */
+/* ─── single file-upload endpoint (no type restriction now) ────── */
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadDir),
   filename   : (_req, file, cb) => {
-    const ext = path.extname(file.originalname || ".png");
-    cb(null, `shot-${Date.now()}${ext}`);
+    const ts  = Date.now();
+    const ext = path.extname(file.originalname || "");
+    cb(null, `upload-${ts}${ext}`);
   },
 });
-const upload = multer({
-  storage,
-  fileFilter: (_req, file, cb) =>
-    file.mimetype.startsWith("image/")
-      ? cb(null, true)
-      : cb(new Error("Only image uploads allowed"), false),
-});
+
+/* accept ANY file – size limits can be added via “limits” if needed */
+const upload = multer({ storage });
 
 app.post("/api/uploads", upload.single("file"), (req, res) => {
   if (!req.file) return res.status(400).json({ error: "file required" });
-  res.json({ url: `/uploads/${req.file.filename}` });
+  res.json({ url: `/uploads/${req.file.filename}`, name: req.file.originalname });
 });
 
-/* ─── helpers ──────────────────────────────────────────────────── */
-
-/* grab “/uploads/….*” URLs from Markdown */
+/* ─── helpers (unchanged) ───────────────────────────────────────── */
 function uploadsInMarkdown(md = "") {
   const urls = new Set();
   const re   = /\/uploads\/([^)\s]+)/g;
@@ -74,13 +69,11 @@ function uploadsInMarkdown(md = "") {
   return urls;
 }
 
-/* basic CSV encoder (quoted) */
 function csv(rows, headers) {
   const esc = (v = "") => `"${String(v).replace(/"/g, '""')}"`;
   return [headers, ...rows].map((r) => r.map(esc).join(",")).join("\n");
 }
 
-/* push files/strings into a ZIP and stream it */
 function streamZip(res, pushFn, zipName) {
   res.setHeader("Content-Type", "application/zip");
   res.setHeader("Content-Disposition", `attachment; filename="${zipName}"`);
@@ -96,19 +89,13 @@ function streamZip(res, pushFn, zipName) {
   archive.finalize();
 }
 
-/* append an image file if it exists (skip silently otherwise)
-   NOTE: path **inside the ZIP** must always use POSIX “/” separators */
 function appendImage(archive, fname, prefix = "") {
   const fp = path.join(uploadDir, fname);
   if (!fs.existsSync(fp)) return;
-
-  /* correct path for the archive – POSIX join avoids “\” on Windows */
-  const zipName = prefix
-    ? path.posix.join(prefix, fname)
-    : fname;
-
+  const zipName = prefix ? path.posix.join(prefix, fname) : fname;
   archive.file(fp, { name: zipName });
 }
+
 
 /* ─── task-level archive ───────────────────────────────────────── */
 app.get("/api/tasks/:tid/images.zip", async (req, res) => {
@@ -256,3 +243,4 @@ app.get("*", (_req, res) =>
 );
 
 app.listen(port, () => console.log(`Web-Project listening on ${port}`));
+
