@@ -13,20 +13,26 @@ const isImage = (file) =>
   file.type.startsWith("image/") ||
   /\.(png|jpe?g|gif|bmp|webp|avif)$/i.test(file.name || "");
 
-/* clipboard → upload → markdown (images OR any file) */
+/* clipboard → upload → markdown */
 async function pasteFiles(e, append) {
-  const items = e.clipboardData?.items || [];
-  for (const it of items) {
-    if (it.kind !== "file") continue;           // skip text/html etc.
-    e.preventDefault();
+  const items  = Array.from(e.clipboardData?.items || [])
+                       .filter(it => it.kind === "file");
+  if (items.length === 0) return;
 
-    const file = it.getAsFile();
+  e.preventDefault();
+
+  /* get all File objects first */
+  const files = await Promise.all(items.map(it => it.getAsFile()));
+
+  /* if at least one non-image file exists → treat **everything** as link */
+  const preferLinks = files.some(f => !isImage(f));
+
+  for (const file of files) {
     if (!file) continue;
-
     const { url } = await api.uploadImage(file).catch(() => ({}));
     if (!url) continue;
 
-    const md = isImage(file)
+    const md = !preferLinks && isImage(file)
       ? `\n![${file.name}](${url})\n`
       : `\n[${file.name}](${url})\n`;
 
@@ -106,3 +112,4 @@ export default function TaskForm({ projectId, onSave, customers, tasks }) {
     </details>
   );
 }
+

@@ -43,18 +43,21 @@ const isImage = (file) =>
 
 /* clipboard → upload → markdown  */
 async function pasteFiles(e, append) {
-  const items = e.clipboardData?.items || [];
-  for (const it of items) {
-    if (it.kind !== "file") continue;
-    e.preventDefault();
+  const items  = Array.from(e.clipboardData?.items || [])
+                       .filter(it => it.kind === "file");
+  if (items.length === 0) return;
 
-    const file = it.getAsFile();
+  e.preventDefault();
+
+  const files = await Promise.all(items.map(it => it.getAsFile()));
+  const preferLinks = files.some(f => !isImage(f));
+
+  for (const file of files) {
     if (!file) continue;
-
     const { url } = await api.uploadImage(file).catch(()=>({}));
     if (!url) continue;
 
-    const md = isImage(file)
+    const md = !preferLinks && isImage(file)
       ? `\n![${file.name}](${url})\n`
       : `\n[${file.name}](${url})\n`;
 
