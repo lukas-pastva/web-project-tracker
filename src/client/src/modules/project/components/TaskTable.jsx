@@ -36,6 +36,11 @@ function imgUrls(md = "") {
   return out;
 }
 
+/* decide if file should be inline image */
+const isImage = (file) =>
+  file.type.startsWith("image/") ||
+  /\.(png|jpe?g|gif|bmp|webp|avif)$/i.test(file.name || "");
+
 /* clipboard → upload → markdown  */
 async function pasteFiles(e, append) {
   const items = e.clipboardData?.items || [];
@@ -43,11 +48,13 @@ async function pasteFiles(e, append) {
     if (it.kind !== "file") continue;
     e.preventDefault();
 
-    const file    = it.getAsFile();
+    const file = it.getAsFile();
+    if (!file) continue;
+
     const { url } = await api.uploadImage(file).catch(()=>({}));
     if (!url) continue;
 
-    const md = file.type.startsWith("image/")
+    const md = isImage(file)
       ? `\n![${file.name}](${url})\n`
       : `\n[${file.name}](${url})\n`;
 
