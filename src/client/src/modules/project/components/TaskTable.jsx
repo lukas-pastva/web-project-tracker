@@ -27,7 +27,7 @@ const fmtDur = (ms) =>
         .toString()
         .padStart(2, "0")}m`;
 
-/* grab all Markdown image URLs */
+/* Markdown image URLs only (for gallery) */
 function imgUrls(md = "") {
   const out = [];
   const re  = /!\[[^\]]*]\(([^)]+)\)/g;
@@ -36,16 +36,23 @@ function imgUrls(md = "") {
   return out;
 }
 
-/* paste screenshot → upload → append markdown */
-async function pasteShot(e, append) {
+/* clipboard → upload → markdown  */
+async function pasteFiles(e, append) {
   const items = e.clipboardData?.items || [];
-  for (const it of items)
-    if (it.type.startsWith("image/")) {
-      e.preventDefault();
-      const blob   = it.getAsFile();
-      const { url } = await api.uploadImage(blob).catch(() => ({}));
-      if (url) append(`\n![Screenshot](${url})\n`);
-    }
+  for (const it of items) {
+    if (it.kind !== "file") continue;
+    e.preventDefault();
+
+    const file    = it.getAsFile();
+    const { url } = await api.uploadImage(file).catch(()=>({}));
+    if (!url) continue;
+
+    const md = file.type.startsWith("image/")
+      ? `\n![${file.name}](${url})\n`
+      : `\n[${file.name}](${url})\n`;
+
+    append(md);
+  }
 }
 
 /* ───────── component ───────── */
@@ -66,8 +73,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
   };
   useEffect(() => {
     if (expId && contacts[expId] == null) loadContacts(expId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expId]);
+  }, [expId, contacts]);
 
   /* gallery keyboard nav */
   useEffect(() => {
@@ -212,7 +218,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                           : "—"}
                       </td>
 
-                      {/* actions: download, edit, delete ------------------------ */}
+                      {/* actions -------------------------------------------------- */}
                       <td style={{ whiteSpace: "nowrap" }}>
                         <a
                           href={`/api/tasks/${t.id}/images.zip`}
@@ -282,13 +288,13 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                             <textarea
                               rows={24}
                               style={{ flex:"1 1 100%", fontSize:"1.05rem" }}
-                              placeholder="Notes (Markdown – autosaved)"
+                              placeholder="Notes (Markdown – autosaved, paste files too)"
                               value={form.notes}
                               onChange={(e) =>
                                 setForm({ ...form, notes: e.target.value })
                               }
                               onPaste={(e) =>
-                                pasteShot(e, (md) =>
+                                pasteFiles(e, (md) =>
                                   setForm((f) => ({ ...f, notes: f.notes + md }))
                                 )
                               }
@@ -362,6 +368,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
           </table>
         )}
       </section>
+
 
       {/* delete-confirm modal -------------------------------------- */}
       {delId != null && (

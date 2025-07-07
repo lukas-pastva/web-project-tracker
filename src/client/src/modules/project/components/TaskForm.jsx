@@ -8,14 +8,23 @@ const ceil30    = d => new Date(Math.ceil (d.getTime() / HALF_HOUR) * HALF_HOUR)
 const toInput   = d => new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
 const fromInput = v => new Date(v).toISOString();
 
-/* clipboard → upload → markdown */
-async function pasteScreenshot(e, append) {
+/* clipboard → upload → markdown (images OR any file) */
+async function pasteFiles(e, append) {
   const items = e.clipboardData?.items || [];
-  for (const it of items) if (it.type.startsWith("image/")) {
+  for (const it of items) {
+    if (it.kind !== "file") continue;
     e.preventDefault();
-    const blob   = it.getAsFile();
-    const { url } = await api.uploadImage(blob).catch(()=>({}));
-    if (url) append(`\n![Screenshot](${url})\n`);
+
+    const file     = it.getAsFile();
+    const { url }  = await api.uploadImage(file).catch(()=>({}));
+    if (!url) continue;
+
+    /* image → markdown image, others → normal link */
+    const md = file.type.startsWith("image/")
+      ? `\n![${file.name}](${url})\n`
+      : `\n[${file.name}](${url})\n`;
+
+    append(md);
   }
 }
 
@@ -81,10 +90,10 @@ export default function TaskForm({ projectId, onSave, customers, tasks }) {
           <label>End&nbsp;  <input type="datetime-local" value={end}   onChange={e=>setEnd  (e.target.value)}             /></label>
 
           <textarea rows={12} style={{flex:"1 1 100%",fontSize:"1.05rem"}}
-                    placeholder="Notes (Markdown – just paste screenshots!)"
+                    placeholder="Notes (Markdown – paste screenshots **or files**!)"
                     value={notes}
                     onChange={e=>setNotes(e.target.value)}
-                    onPaste={e=>pasteScreenshot(e, md=>setNotes(n=>n+md))}/>
+                    onPaste={e=>pasteFiles(e, md=>setNotes(n=>n+md))}/>
           <button className="btn" disabled={!name || !start}>Save</button>
         </form>
       </section>
