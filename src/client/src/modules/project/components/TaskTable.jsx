@@ -4,30 +4,30 @@ import api           from "../api.js";
 import ContactList   from "./ContactList.jsx";
 
 /* ───────── helpers ───────── */
-const fmt = (iso) =>
+const fmt = iso =>
   new Intl.DateTimeFormat(undefined, {
-    dateStyle : "short",
-    timeStyle : "short",
-    hour12    : false,
+    dateStyle: "short",
+    timeStyle: "short",
+    hour12   : false,
   }).format(new Date(iso));
 
-const isoToLocal = (iso) =>
+const isoToLocal = iso =>
   iso
     ? new Date(new Date(iso).getTime() - new Date().getTimezoneOffset() * 60000)
         .toISOString()
         .slice(0, 16)
     : "";
-const toIso = (v) => (v ? new Date(v).toISOString() : null);
+const toIso = v => (v ? new Date(v).toISOString() : null);
 
 const diff   = (a, b) => new Date(b) - new Date(a);
-const fmtDur = (ms) =>
+const fmtDur = ms =>
   ms == null
     ? "—"
     : `${Math.floor(ms / 3_600_000)}h ${(Math.floor(ms / 60_000) % 60)
         .toString()
         .padStart(2, "0")}m`;
 
-/* Markdown image URLs only (for gallery) */
+/* pull Markdown image URLs (for gallery) */
 function imgUrls(md = "") {
   const out = [];
   const re  = /!\[[^\]]*]\(([^)]+)\)/g;
@@ -36,25 +36,23 @@ function imgUrls(md = "") {
   return out;
 }
 
-/* decide if file should be inline image */
-const isImage = (file) =>
-  file.type.startsWith("image/") ||
-  /\.(png|jpe?g|gif|bmp|webp|avif)$/i.test(file.name || "");
+/* ───────── clipboard helpers ───────── */
+const imageExt = /\.(png|jpe?g|gif|bmp|webp|avif)$/i;
+const isImage  = file =>
+  file.type.startsWith("image/") && imageExt.test(file.name || "");
 
-/* clipboard → upload → markdown  */
 async function pasteFiles(e, append) {
-  const items  = Array.from(e.clipboardData?.items || [])
-                       .filter(it => it.kind === "file");
-  if (items.length === 0) return;
-
+  const items = Array.from(e.clipboardData?.items || [])
+                      .filter(it => it.kind === "file");
+  if (!items.length) return;
   e.preventDefault();
 
-  const files = await Promise.all(items.map(it => it.getAsFile()));
+  const files       = await Promise.all(items.map(it => it.getAsFile()));
   const preferLinks = files.some(f => !isImage(f));
 
   for (const file of files) {
     if (!file) continue;
-    const { url } = await api.uploadImage(file).catch(()=>({}));
+    const { url } = await api.uploadImage(file).catch(() => ({}));
     if (!url) continue;
 
     const md = !preferLinks && isImage(file)
@@ -67,7 +65,6 @@ async function pasteFiles(e, append) {
 
 /* ───────── component ───────── */
 export default function TaskTable({ rows, onUpdate, onDelete }) {
-  /* UI state */
   const [editId,    setEdit]       = useState(null);
   const [form,      setForm]       = useState({});
   const [expId,     setExp]        = useState(null);
@@ -77,13 +74,14 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
 
   /* contacts cache */
   const [contacts, setContacts] = useState({});
-  const loadContacts = async (id) => {
+  const loadContacts = async id => {
     const list = await api.listContacts(id).catch(() => []);
-    setContacts((c) => ({ ...c, [id]: list }));
+    setContacts(c => ({ ...c, [id]: list }));
   };
   useEffect(() => {
     if (expId && contacts[expId] == null) loadContacts(expId);
   }, [expId, contacts]);
+
 
   /* gallery keyboard nav */
   useEffect(() => {
@@ -109,11 +107,11 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       onUpdate(editId, {
-        name       : form.name,
-        customer   : form.customer,
-        startedAt  : toIso(form.startedAt),
-        finishedAt : form.finishedAt ? toIso(form.finishedAt) : null,
-        notes      : form.notes.trim() || null,
+        name      : form.name,
+        customer  : form.customer,
+        startedAt : toIso(form.startedAt),
+        finishedAt: form.finishedAt ? toIso(form.finishedAt) : null,
+        notes     : form.notes.trim() || null,
       });
     }, 800);
     return () => clearTimeout(saveTimer.current);
@@ -137,23 +135,22 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     });
   }, [rows, sort]);
 
-  const hdr = (k) =>
+  const hdr = k =>
     `sortable${sort.key === k ? (sort.asc ? " sort-asc" : " sort-desc") : ""}`;
 
-  /* begin inline edit */
-  function beginEdit(e, t) {
+  const beginEdit = (e, t) => {
     e.stopPropagation();
     setForm({
-      name       : t.name,
-      customer   : t.customer ?? "",
-      startedAt  : isoToLocal(t.startedAt),
-      finishedAt : t.finishedAt ? isoToLocal(t.finishedAt) : "",
-      notes      : t.notes ?? "",
+      name      : t.name,
+      customer  : t.customer ?? "",
+      startedAt : isoToLocal(t.startedAt),
+      finishedAt: t.finishedAt ? isoToLocal(t.finishedAt) : "",
+      notes     : t.notes ?? "",
     });
     setEdit(t.id);
-  }
+  };
 
-  /* ─── render ────────────────────────────────────────────────── */
+  /* ───────── UI ───────── */
   return (
     <>
       <section className="card">
@@ -164,7 +161,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
           <table className="tasks-table">
             <thead>
               <tr>
-                {["name","customer","startedAt","finishedAt","duration"].map((k) => (
+                {["name","customer","startedAt","finishedAt","duration"].map(k => (
                   <th
                     key={k}
                     className={hdr(k)}
@@ -187,7 +184,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((t) => {
+              {sorted.map(t => {
                 const imgs = imgUrls(t.notes || "");
                 const mdComponents = {
                   img: ({ node, ...props }) => (
@@ -204,9 +201,10 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     />
                   ),
                 };
+
                 return (
                   <React.Fragment key={t.id}>
-                    {/* summary row ------------------------------------------------ */}
+                    {/* summary row */}
                     <tr
                       className="clickable-row"
                       onClick={() => setExp(expId === t.id ? null : t.id)}
@@ -227,20 +225,18 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                             }`
                           : "—"}
                       </td>
-
-                      {/* actions -------------------------------------------------- */}
                       <td style={{ whiteSpace: "nowrap" }}>
                         <a
                           href={`/api/tasks/${t.id}/images.zip`}
                           className="btn-icon"
                           title="Download task assets (images, notes, contacts)"
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={e => e.stopPropagation()}
                         >
                           ⬇︎
                         </a>{" "}
                         <button
                           className="btn-light"
-                          onClick={(e) => {
+                          onClick={e => {
                             e.stopPropagation();
                             beginEdit(e, t);
                           }}
@@ -249,7 +245,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                         </button>{" "}
                         <button
                           className="btn-light"
-                          onClick={(e) => {
+                          onClick={e => {
                             e.stopPropagation();
                             setDel(t.id);
                           }}
@@ -259,31 +255,37 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                       </td>
                     </tr>
 
-                    {/* inline edit ------------------------------------------------ */}
+                    {/* inline edit */}
                     {editId === t.id && (
                       <tr>
                         <td colSpan={7}>
                           <form
-                            style={{ display:"flex", flexWrap:"wrap", gap:".4rem" }}
-                            onKeyDown={(e) => { if (e.key === "Escape") setEdit(null); }}
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: ".4rem",
+                            }}
+                            onKeyDown={e => {
+                              if (e.key === "Escape") setEdit(null);
+                            }}
                           >
                             <input
                               value={form.name}
-                              onChange={(e) =>
+                              onChange={e =>
                                 setForm({ ...form, name: e.target.value })
                               }
                               required
                             />
                             <input
                               value={form.customer}
-                              onChange={(e) =>
+                              onChange={e =>
                                 setForm({ ...form, customer: e.target.value })
                               }
                             />
                             <input
                               type="datetime-local"
                               value={form.startedAt}
-                              onChange={(e) =>
+                              onChange={e =>
                                 setForm({ ...form, startedAt: e.target.value })
                               }
                               required
@@ -291,25 +293,30 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                             <input
                               type="datetime-local"
                               value={form.finishedAt}
-                              onChange={(e) =>
+                              onChange={e =>
                                 setForm({ ...form, finishedAt: e.target.value })
                               }
                             />
                             <textarea
                               rows={24}
-                              style={{ flex:"1 1 100%", fontSize:"1.05rem" }}
+                              style={{
+                                flex: "1 1 100%",
+                                fontSize: "1.05rem",
+                              }}
                               placeholder="Notes (Markdown – autosaved, paste files too)"
                               value={form.notes}
-                              onChange={(e) =>
+                              onChange={e =>
                                 setForm({ ...form, notes: e.target.value })
                               }
-                              onPaste={(e) =>
-                                pasteFiles(e, (md) =>
-                                  setForm((f) => ({ ...f, notes: f.notes + md }))
+                              onPaste={e =>
+                                pasteFiles(e, md =>
+                                  setForm(f => ({
+                                    ...f,
+                                    notes: f.notes + md,
+                                  }))
                                 )
                               }
                             />
-
                             <button
                               type="button"
                               className="btn-light"
@@ -329,10 +336,10 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                       </tr>
                     )}
 
-                    {/* expanded section ----------------------------------------- */}
+                    {/* expanded row */}
                     {expId === t.id && (
                       <tr>
-                        <td colSpan={7} style={{ background:"var(--row-alt)" }}>
+                        <td colSpan={7} style={{ background: "var(--row-alt)" }}>
                           {t.notes && editId !== t.id && (
                             <div className="notes-full">
                               <ReactMarkdown components={mdComponents}>
@@ -341,12 +348,16 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                             </div>
                           )}
 
-                          <h4 style={{ marginTop:t.notes ? "1rem" : 0 }}>Contacts</h4>
+                          <h4 style={{ marginTop: t.notes ? "1rem" : 0 }}>
+                            Contacts
+                          </h4>
                           <div className="contacts-box">
                             {contacts[t.id] == null ? (
-                              <p><em>Loading…</em></p>
+                              <p>
+                                <em>Loading…</em>
+                              </p>
                             ) : contacts[t.id].length ? (
-                              <table style={{ width:"100%" }}>
+                              <table style={{ width: "100%" }}>
                                 <thead>
                                   <tr>
                                     <th>Email</th>
@@ -355,7 +366,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {contacts[t.id].map((c) => (
+                                  {contacts[t.id].map(c => (
                                     <tr key={c.id}>
                                       <td>{c.email}</td>
                                       <td>{c.name}</td>
@@ -365,7 +376,9 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                                 </tbody>
                               </table>
                             ) : (
-                              <p><em>No contacts</em></p>
+                              <p>
+                                <em>No contacts</em>
+                              </p>
                             )}
                           </div>
                         </td>
@@ -379,18 +392,19 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         )}
       </section>
 
-
-      {/* delete-confirm modal -------------------------------------- */}
+      {/* delete-confirm */}
       {delId != null && (
         <div className="modal-backdrop">
           <div className="modal-box">
-            <p style={{ marginTop:0 }}>Delete this task?</p>
-            <div style={{
-              marginTop:"1rem",
-              display:"flex",
-              gap:".6rem",
-              justifyContent:"center",
-            }}>
+            <p style={{ marginTop: 0 }}>Delete this task?</p>
+            <div
+              style={{
+                marginTop: "1rem",
+                display: "flex",
+                gap: ".6rem",
+                justifyContent: "center",
+              }}
+            >
               <button
                 className="btn"
                 onClick={async () => {
@@ -400,7 +414,10 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
               >
                 Delete
               </button>
-              <button className="btn-light" onClick={() => setDel(null)}>
+              <button
+                className="btn-light"
+                onClick={() => setDel(null)}
+              >
                 Cancel
               </button>
             </div>
@@ -408,18 +425,18 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         </div>
       )}
 
-      {/* gallery modal -------------------------------------------- */}
+      {/* gallery */}
       {gallery && (
         <div
           className="modal-backdrop"
           onClick={() => setGallery(null)}
-          style={{ cursor:"zoom-out" }}
+          style={{ cursor: "zoom-out" }}
         >
           <div
-            style={{ position:"absolute", inset:0 }}
-            onClick={(e) => {
+            style={{ position: "absolute", inset: 0 }}
+            onClick={e => {
               const mid = window.innerWidth / 2;
-              setGallery((g) => ({
+              setGallery(g => ({
                 ...g,
                 idx:
                   e.clientX > mid
@@ -431,14 +448,17 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
           <img
             src={gallery.urls[gallery.idx]}
             className="gallery-img"
-            onClick={(e) => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
           />
         </div>
       )}
 
-      {/* contacts modal ------------------------------------------- */}
+      {/* contacts modal */}
       {contactMod && (
-        <ContactList taskId={contactMod} onClose={() => setContactMod(null)} />
+        <ContactList
+          taskId={contactMod}
+          onClose={() => setContactMod(null)}
+        />
       )}
     </>
   );
