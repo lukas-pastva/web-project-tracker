@@ -18,7 +18,7 @@ import { Task, Contact, Project } from "./modules/project/model.js";
 dotenv.config();
 
 /* ensure DB tables exist */
-await Promise.all([syncProject(), syncConfig(), syncWork()]);
+await Promise.all([syncProject(), syncConfig()]);
 
 const app  = express();
 const port = process.env.PORT || 8080;
