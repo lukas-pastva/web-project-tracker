@@ -43,17 +43,25 @@ r.delete("/api/projects/:id", async (req, res) => {
 });
 
 /* ───────────────────────── tasks ───────────────────────────────── */
-r.get("/api/projects/:pid/tasks", async (req, res) => {
+r.get("/api/projects/:pid/tasks", async (req, res) =>
   res.json(
     await Task.findAll({
       where: { projectId: req.params.pid },
       order: [["startedAt", "ASC"]],
     })
-  );
-});
+  )
+);
 
 r.post("/api/projects/:pid/tasks", async (req, res) => {
-  const { name, customer, startedAt, finishedAt, notes } = req.body;
+  const {
+    name,
+    customer,
+    startedAt,
+    finishedAt,
+    notes,
+    tracked = false,
+  } = req.body;
+
   if (!name || !startedAt)
     return res.status(400).json({ error: "name & startedAt required" });
 
@@ -65,6 +73,7 @@ r.post("/api/projects/:pid/tasks", async (req, res) => {
       startedAt,
       finishedAt,
       notes,
+      tracked: Boolean(tracked),
     })
   );
 });

@@ -13,9 +13,6 @@ import { syncProject } from "./modules/project/seed.js";
 import configRoutes    from "./modules/config/routes.js";
 import { syncConfig }  from "./modules/config/seed.js";
 
-import workRoutes      from "./modules/work/routes.js";
-import { syncWork }    from "./modules/work/seed.js";
-
 import { Task, Contact, Project } from "./modules/project/model.js";
 
 dotenv.config();
@@ -235,7 +232,6 @@ app.get("/api/images.zip", async (_req, res) => {
 /* ─── API routes & SPA fallback ────────────────────────────────── */
 app.use(projectRoutes);
 app.use(configRoutes);
-app.use(workRoutes);
 
 app.use(express.static(path.join(path.dirname(fileURLToPath(import.meta.url)), "../public")));
 app.get("*", (_req, res) =>

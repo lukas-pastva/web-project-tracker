@@ -21,6 +21,7 @@ export const Task = db.define(
     startedAt  : { type: DataTypes.DATE,  allowNull: false },
     finishedAt : { type: DataTypes.DATE },
     notes      : { type: DataTypes.TEXT },
+    tracked    : { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   },
   { timestamps: false }
 );
@@ -38,10 +39,9 @@ export const Contact = db.define(
   { timestamps: false }
 );
 
-/* ─────────────── relations & cascades ──────────────────────────── */
+/* ───────────── relations & cascades ────────────────────────────── */
 Project.hasMany(Task,   { foreignKey: "projectId", onDelete: "CASCADE" });
 Task.belongsTo(Project, { foreignKey: "projectId" });
 
 Task.hasMany(Contact,   { foreignKey: "taskId",    onDelete: "CASCADE" });
 Contact.belongsTo(Task, { foreignKey: "taskId" });
-

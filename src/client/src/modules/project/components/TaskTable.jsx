@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import ReactMarkdown  from "react-markdown";
-import remarkGfm      from "remark-gfm";
-import api            from "../api.js";
-import ContactList    from "./ContactList.jsx";
+import ReactMarkdown from "react-markdown";
+import remarkGfm     from "remark-gfm";
+import api           from "../api.js";
+import ContactList   from "./ContactList.jsx";
 
 /* ───────── helpers ───────── */
 const fmt = (iso) =>
@@ -20,6 +20,7 @@ const isoToLocal = (iso) =>
         .toISOString()
         .slice(0, 16)
     : "";
+
 const toIso = (v) => (v ? new Date(v).toISOString() : null);
 
 const diff = (a, b) => new Date(b) - new Date(a);
@@ -70,12 +71,12 @@ async function pasteFiles(e, append) {
 
 /* ───────── component ───────── */
 export default function TaskTable({ rows, onUpdate, onDelete }) {
-  const [editId, setEdit] = useState(null);
-  const [form, setForm] = useState({});
-  const [expId, setExp] = useState(null);
-  const [delId, setDel] = useState(null);
-  const [gallery, setGallery] = useState(null);
-  const [contactMod, setContactMod] = useState(null);
+  const [editId, setEditId]     = useState(null);
+  const [form,   setForm]       = useState({});
+  const [expId,  setExp]        = useState(null);
+  const [delId,  setDel]        = useState(null);
+  const [gallery,setGallery]    = useState(null);
+  const [contactMod,setContactMod] = useState(null);
 
   /* contacts cache */
   const [contacts, setContacts] = useState({});
@@ -111,15 +112,19 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       onUpdate(editId, {
-        name: form.name,
-        customer: form.customer,
-        startedAt: toIso(form.startedAt),
+        tracked   : form.tracked,
+        name      : form.name,
+        customer  : form.customer,
+        startedAt : toIso(form.startedAt),
         finishedAt: form.finishedAt ? toIso(form.finishedAt) : null,
-        notes: form.notes.trim() || null,
+        notes     : form.notes.trim() || null,
       });
     }, 800);
     return () => clearTimeout(saveTimer.current);
   }, [form, editId, onUpdate]);
+
+  /* quick tracked toggle from list */
+  const toggleTracked = (t) => onUpdate(t.id, { tracked: !t.tracked });
 
   /* sorting */
   const [sort, setSort] = useState({ key: "startedAt", asc: false });
@@ -148,13 +153,14 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
   const beginEdit = (e, t) => {
     e.stopPropagation();
     setForm({
-      name: t.name,
-      customer: t.customer ?? "",
-      startedAt: isoToLocal(t.startedAt),
+      tracked   : t.tracked,
+      name      : t.name,
+      customer  : t.customer ?? "",
+      startedAt : isoToLocal(t.startedAt),
       finishedAt: t.finishedAt ? isoToLocal(t.finishedAt) : "",
-      notes: t.notes ?? "",
+      notes     : t.notes ?? "",
     });
-    setEdit(t.id);
+    setEditId(t.id);
   };
 
   /* ───────── UI ───────── */
@@ -170,6 +176,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
           <table className="tasks-table">
             <thead>
               <tr>
+                <th style={{ width: 1 }}>✓</th>
                 {["name", "customer", "startedAt", "finishedAt", "duration"].map(
                   (k) => (
                     <th
@@ -220,6 +227,18 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                       className="clickable-row"
                       onClick={() => setExp(expId === t.id ? null : t.id)}
                     >
+                      <td style={{ textAlign: "center" }}>
+                        <button
+                          className="btn-icon"
+                          title={t.tracked ? "Unmark" : "Mark as tracked"}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleTracked(t);
+                          }}
+                        >
+                          {t.tracked ? "✓" : "○"}
+                        </button>
+                      </td>
                       <td>{t.name}</td>
                       <td>{t.customer || "—"}</td>
                       <td>{fmt(t.startedAt)}</td>
@@ -240,7 +259,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                         <a
                           href={`/api/tasks/${t.id}/images.zip`}
                           className="btn-icon"
-                          title="Download task assets (images, notes, contacts)"
+                          title="Download task assets"
                           onClick={(e) => e.stopPropagation()}
                         >
                           ⬇︎
@@ -269,7 +288,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     {/* inline edit */}
                     {editId === t.id && (
                       <tr>
-                        <td colSpan={7}>
+                        <td colSpan={8}>
                           <form
                             style={{
                               display: "flex",
@@ -277,9 +296,28 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                               gap: ".4rem",
                             }}
                             onKeyDown={(e) => {
-                              if (e.key === "Escape") setEdit(null);
+                              if (e.key === "Escape") setEditId(null);
                             }}
                           >
+                            <label
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: ".25rem",
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={form.tracked}
+                                onChange={(e) =>
+                                  setForm({
+                                    ...form,
+                                    tracked: e.target.checked,
+                                  })
+                                }
+                              />{" "}
+                              Tracked
+                            </label>
                             <input
                               value={form.name}
                               onChange={(e) =>
@@ -317,7 +355,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                                 flex: "1 1 100%",
                                 fontSize: "1.05rem",
                               }}
-                              placeholder="Notes (Markdown – autosaved, paste files too)"
+                              placeholder="Notes…"
                               value={form.notes}
                               onChange={(e) =>
                                 setForm({ ...form, notes: e.target.value })
@@ -341,7 +379,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                             <button
                               type="button"
                               className="btn-light"
-                              onClick={() => setEdit(null)}
+                              onClick={() => setEditId(null)}
                             >
                               Close
                             </button>
@@ -354,7 +392,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     {expId === t.id && (
                       <tr>
                         <td
-                          colSpan={7}
+                          colSpan={8}
                           style={{ background: "var(--row-alt)" }}
                         >
                           {t.notes && editId !== t.id && (

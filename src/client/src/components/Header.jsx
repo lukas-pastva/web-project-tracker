@@ -36,11 +36,6 @@ export default function Header() {
           </a>
         ))}
 
-        {/* NEW Work link */}
-        <a href="/work" className={isActive("/work") ? "active" : ""}>
-          Work
-        </a>
-
         <a href="/contacts" className={isActive("/contacts") ? "active" : ""}>
           Contacts
         </a>
