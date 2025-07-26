@@ -6,13 +6,21 @@ export default function WorkTable({ rows, onUpdate, onDelete }) {
 
   const beginEdit = (w) => {
     setEditId(w.id);
-    setForm({ ...w, timeSpent: w.timeSpent ?? "" });
+    setForm({ ...w, timeSpent: w.timeSpent ?? "", tracked: w.tracked });
   };
 
   async function save() {
-    await onUpdate(editId, { ...form, timeSpent: form.timeSpent ? Number(form.timeSpent) : null });
+    await onUpdate(editId, {
+      ...form,
+      timeSpent: form.timeSpent ? Number(form.timeSpent) : null,
+      tracked  : !!form.tracked,
+    });
     setEditId(null);
   }
+
+  /* quick toggle from list (no modal) */
+  const toggleTracked = (w) =>
+    onUpdate(w.id, { tracked: !w.tracked });
 
   return (
     <section className="card">
@@ -24,14 +32,26 @@ export default function WorkTable({ rows, onUpdate, onDelete }) {
         <table className="tasks-table">
           <thead>
             <tr>
-              <th>Partner</th><th>Task</th><th>Ticket ID</th><th>Time (min)</th><th>Description</th><th></th>
+              <th style={{ width: 1 }}>✓</th>
+              <th>Partner</th><th>Task</th><th>Ticket ID</th>
+              <th>Time&nbsp;(min)</th><th>Description</th><th></th>
             </tr>
           </thead>
           <tbody>
             {rows.map(w => editId===w.id ? (
+              /* ─── inline edit row ─── */
               <tr key={w.id}>
-                <td><input value={form.partner}   onChange={e=>setForm({...form,partner:e.target.value})} required/></td>
-                <td><input value={form.task}      onChange={e=>setForm({...form,task:e.target.value})}    required/></td>
+                <td style={{ textAlign:"center" }}>
+                  <input type="checkbox"
+                         checked={form.tracked}
+                         onChange={e=>setForm({...form,tracked:e.target.checked})}/>
+                </td>
+                <td><input value={form.partner}
+                           onChange={e=>setForm({...form,partner:e.target.value})}
+                           required/></td>
+                <td><input value={form.task}
+                           onChange={e=>setForm({...form,task:e.target.value})}
+                           required/></td>
                 <td><input value={form.ticketId||""}
                            onChange={e=>setForm({...form,ticketId:e.target.value})}/></td>
                 <td><input type="number" min="0" value={form.timeSpent}
@@ -44,12 +64,22 @@ export default function WorkTable({ rows, onUpdate, onDelete }) {
                 </td>
               </tr>
             ) : (
+              /* ─── normal row ─── */
               <tr key={w.id}>
+                <td style={{ textAlign:"center" }}>
+                  <button className="btn-icon"
+                          title={w.tracked ? "Unmark as tracked" : "Mark as tracked"}
+                          onClick={()=>toggleTracked(w)}>
+                    {w.tracked ? "✓" : "○"}
+                  </button>
+                </td>
                 <td>{w.partner}</td>
                 <td>{w.task}</td>
                 <td>{w.ticketId || "—"}</td>
                 <td>{w.timeSpent ?? "—"}</td>
-                <td>{w.description ? w.description.slice(0,60)+(w.description.length>60?"…":"") : "—"}</td>
+                <td>{w.description
+                      ? w.description.slice(0,60)+(w.description.length>60?"…":"")
+                      : "—"}</td>
                 <td style={{whiteSpace:"nowrap"}}>
                   <button className="btn-light" onClick={()=>beginEdit(w)}>Edit</button>{" "}
                   <button className="btn-light" onClick={()=>onDelete(w.id)}>×</button>

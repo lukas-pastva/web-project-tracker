@@ -10,17 +10,20 @@ r.get("/api/work", async (_req, res) =>
 
 /* ─── create job ───────────────────────────────────────────────── */
 r.post("/api/work", async (req, res) => {
-  const { partner, task, description, ticketId, timeSpent } = req.body;
+  const { partner, task, description, ticketId, timeSpent, tracked = false } =
+    req.body;
+
   if (!partner?.trim() || !task?.trim())
     return res.status(400).json({ error: "partner & task required" });
 
   res.json(
     await Work.create({
-      partner   : partner.trim(),
-      task      : task.trim(),
+      partner    : partner.trim(),
+      task       : task.trim(),
       description: description?.trim() || null,
-      ticketId  : ticketId?.trim() || null,
-      timeSpent : Number(timeSpent) || null,
+      ticketId   : ticketId?.trim() || null,
+      timeSpent  : Number(timeSpent) || null,
+      tracked    : Boolean(tracked),
     })
   );
 });

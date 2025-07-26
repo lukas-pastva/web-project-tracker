@@ -5,12 +5,14 @@ import db from "../../db.js";
 const Work = db.define(
   "work",
   {
-    id        : { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    partner   : { type: DataTypes.STRING(128), allowNull: false },
-    task      : { type: DataTypes.STRING(256), allowNull: false },
+    id         : { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
+    partner    : { type: DataTypes.STRING(128), allowNull: false },
+    task       : { type: DataTypes.STRING(256), allowNull: false },
     description: { type: DataTypes.TEXT },
-    ticketId  : { type: DataTypes.STRING(64) },
-    timeSpent : { type: DataTypes.INTEGER },           // minutes
+    ticketId   : { type: DataTypes.STRING(64) },
+    timeSpent  : { type: DataTypes.INTEGER },           // minutes
+    /* NEW */
+    tracked    : { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   },
   { timestamps: true }
 );
