@@ -1,26 +1,29 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import ReactMarkdown from "react-markdown";
-import api           from "../api.js";
-import ContactList   from "./ContactList.jsx";
+import ReactMarkdown  from "react-markdown";
+import remarkGfm      from "remark-gfm";
+import api            from "../api.js";
+import ContactList    from "./ContactList.jsx";
 
 /* ───────── helpers ───────── */
-const fmt = iso =>
+const fmt = (iso) =>
   new Intl.DateTimeFormat(undefined, {
     dateStyle: "short",
     timeStyle: "short",
-    hour12   : false,
+    hour12: false,
   }).format(new Date(iso));
 
-const isoToLocal = iso =>
+const isoToLocal = (iso) =>
   iso
-    ? new Date(new Date(iso).getTime() - new Date().getTimezoneOffset() * 60000)
+    ? new Date(
+        new Date(iso).getTime() - new Date().getTimezoneOffset() * 60000
+      )
         .toISOString()
         .slice(0, 16)
     : "";
-const toIso = v => (v ? new Date(v).toISOString() : null);
+const toIso = (v) => (v ? new Date(v).toISOString() : null);
 
-const diff   = (a, b) => new Date(b) - new Date(a);
-const fmtDur = ms =>
+const diff = (a, b) => new Date(b) - new Date(a);
+const fmtDur = (ms) =>
   ms == null
     ? "—"
     : `${Math.floor(ms / 3_600_000)}h ${(Math.floor(ms / 60_000) % 60)
@@ -30,7 +33,7 @@ const fmtDur = ms =>
 /* pull Markdown image URLs (for gallery) */
 function imgUrls(md = "") {
   const out = [];
-  const re  = /!\[[^\]]*]\(([^)]+)\)/g;
+  const re = /!\[[^\]]*]\(([^)]+)\)/g;
   let m;
   while ((m = re.exec(md)) !== null) out.push(m[1]);
   return out;
@@ -38,26 +41,28 @@ function imgUrls(md = "") {
 
 /* ───────── clipboard helpers ───────── */
 const imageExt = /\.(png|jpe?g|gif|bmp|webp|avif)$/i;
-const isImage  = file =>
+const isImage = (file) =>
   file.type.startsWith("image/") && imageExt.test(file.name || "");
 
 async function pasteFiles(e, append) {
-  const items = Array.from(e.clipboardData?.items || [])
-                      .filter(it => it.kind === "file");
+  const items = Array.from(e.clipboardData?.items || []).filter(
+    (it) => it.kind === "file"
+  );
   if (!items.length) return;
   e.preventDefault();
 
-  const files       = await Promise.all(items.map(it => it.getAsFile()));
-  const preferLinks = files.some(f => !isImage(f));
+  const files = await Promise.all(items.map((it) => it.getAsFile()));
+  const preferLinks = files.some((f) => !isImage(f));
 
   for (const file of files) {
     if (!file) continue;
     const { url } = await api.uploadImage(file).catch(() => ({}));
     if (!url) continue;
 
-    const md = !preferLinks && isImage(file)
-      ? `\n![${file.name}](${url})\n`
-      : `\n[${file.name}](${url})\n`;
+    const md =
+      !preferLinks && isImage(file)
+        ? `\n![${file.name}](${url})\n`
+        : `\n[${file.name}](${url})\n`;
 
     append(md);
   }
@@ -65,23 +70,22 @@ async function pasteFiles(e, append) {
 
 /* ───────── component ───────── */
 export default function TaskTable({ rows, onUpdate, onDelete }) {
-  const [editId,    setEdit]       = useState(null);
-  const [form,      setForm]       = useState({});
-  const [expId,     setExp]        = useState(null);
-  const [delId,     setDel]        = useState(null);
-  const [gallery,   setGallery]    = useState(null);
-  const [contactMod,setContactMod] = useState(null);
+  const [editId, setEdit] = useState(null);
+  const [form, setForm] = useState({});
+  const [expId, setExp] = useState(null);
+  const [delId, setDel] = useState(null);
+  const [gallery, setGallery] = useState(null);
+  const [contactMod, setContactMod] = useState(null);
 
   /* contacts cache */
   const [contacts, setContacts] = useState({});
-  const loadContacts = async id => {
+  const loadContacts = async (id) => {
     const list = await api.listContacts(id).catch(() => []);
-    setContacts(c => ({ ...c, [id]: list }));
+    setContacts((c) => ({ ...c, [id]: list }));
   };
   useEffect(() => {
     if (expId && contacts[expId] == null) loadContacts(expId);
   }, [expId, contacts]);
-
 
   /* gallery keyboard nav */
   useEffect(() => {
@@ -107,11 +111,11 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       onUpdate(editId, {
-        name      : form.name,
-        customer  : form.customer,
-        startedAt : toIso(form.startedAt),
+        name: form.name,
+        customer: form.customer,
+        startedAt: toIso(form.startedAt),
         finishedAt: form.finishedAt ? toIso(form.finishedAt) : null,
-        notes     : form.notes.trim() || null,
+        notes: form.notes.trim() || null,
       });
     }, 800);
     return () => clearTimeout(saveTimer.current);
@@ -127,25 +131,28 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         const dy = diff(b.startedAt, b.finishedAt);
         return dx === dy ? 0 : dx > dy ? dir : -dir;
       }
-      const x = a[sort.key], y = b[sort.key];
+      const x = a[sort.key],
+        y = b[sort.key];
       if (x == null && y == null) return 0;
       if (x == null) return -dir;
-      if (y == null) return  dir;
+      if (y == null) return dir;
       return x > y ? dir : -dir;
     });
   }, [rows, sort]);
 
-  const hdr = k =>
-    `sortable${sort.key === k ? (sort.asc ? " sort-asc" : " sort-desc") : ""}`;
+  const hdr = (k) =>
+    `sortable${
+      sort.key === k ? (sort.asc ? " sort-asc" : " sort-desc") : ""
+    }`;
 
   const beginEdit = (e, t) => {
     e.stopPropagation();
     setForm({
-      name      : t.name,
-      customer  : t.customer ?? "",
-      startedAt : isoToLocal(t.startedAt),
+      name: t.name,
+      customer: t.customer ?? "",
+      startedAt: isoToLocal(t.startedAt),
       finishedAt: t.finishedAt ? isoToLocal(t.finishedAt) : "",
-      notes     : t.notes ?? "",
+      notes: t.notes ?? "",
     });
     setEdit(t.id);
   };
@@ -156,35 +163,39 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
       <section className="card">
         <h3>Tasks</h3>
         {sorted.length === 0 ? (
-          <p><em>No tasks yet</em></p>
+          <p>
+            <em>No tasks yet</em>
+          </p>
         ) : (
           <table className="tasks-table">
             <thead>
               <tr>
-                {["name","customer","startedAt","finishedAt","duration"].map(k => (
-                  <th
-                    key={k}
-                    className={hdr(k)}
-                    onClick={() =>
-                      setSort({
-                        key : k,
-                        asc : sort.key === k ? !sort.asc : true,
-                      })
-                    }
-                  >
-                    {k === "startedAt"
-                      ? "Start"
-                      : k === "finishedAt"
-                      ? "End"
-                      : k.charAt(0).toUpperCase() + k.slice(1)}
-                  </th>
-                ))}
+                {["name", "customer", "startedAt", "finishedAt", "duration"].map(
+                  (k) => (
+                    <th
+                      key={k}
+                      className={hdr(k)}
+                      onClick={() =>
+                        setSort({
+                          key: k,
+                          asc: sort.key === k ? !sort.asc : true,
+                        })
+                      }
+                    >
+                      {k === "startedAt"
+                        ? "Start"
+                        : k === "finishedAt"
+                        ? "End"
+                        : k.charAt(0).toUpperCase() + k.slice(1)}
+                    </th>
+                  )
+                )}
                 <th>Notes</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {sorted.map(t => {
+              {sorted.map((t) => {
                 const imgs = imgUrls(t.notes || "");
                 const mdComponents = {
                   img: ({ node, ...props }) => (
@@ -194,8 +205,8 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                       className="shot-thumb"
                       onClick={() =>
                         setGallery({
-                          urls : imgs,
-                          idx  : imgs.indexOf(props.src),
+                          urls: imgs,
+                          idx: imgs.indexOf(props.src),
                         })
                       }
                     />
@@ -230,13 +241,13 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                           href={`/api/tasks/${t.id}/images.zip`}
                           className="btn-icon"
                           title="Download task assets (images, notes, contacts)"
-                          onClick={e => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
                         >
                           ⬇︎
                         </a>{" "}
                         <button
                           className="btn-light"
-                          onClick={e => {
+                          onClick={(e) => {
                             e.stopPropagation();
                             beginEdit(e, t);
                           }}
@@ -245,7 +256,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                         </button>{" "}
                         <button
                           className="btn-light"
-                          onClick={e => {
+                          onClick={(e) => {
                             e.stopPropagation();
                             setDel(t.id);
                           }}
@@ -265,27 +276,27 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                               flexWrap: "wrap",
                               gap: ".4rem",
                             }}
-                            onKeyDown={e => {
+                            onKeyDown={(e) => {
                               if (e.key === "Escape") setEdit(null);
                             }}
                           >
                             <input
                               value={form.name}
-                              onChange={e =>
+                              onChange={(e) =>
                                 setForm({ ...form, name: e.target.value })
                               }
                               required
                             />
                             <input
                               value={form.customer}
-                              onChange={e =>
+                              onChange={(e) =>
                                 setForm({ ...form, customer: e.target.value })
                               }
                             />
                             <input
                               type="datetime-local"
                               value={form.startedAt}
-                              onChange={e =>
+                              onChange={(e) =>
                                 setForm({ ...form, startedAt: e.target.value })
                               }
                               required
@@ -293,8 +304,11 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                             <input
                               type="datetime-local"
                               value={form.finishedAt}
-                              onChange={e =>
-                                setForm({ ...form, finishedAt: e.target.value })
+                              onChange={(e) =>
+                                setForm({
+                                  ...form,
+                                  finishedAt: e.target.value,
+                                })
                               }
                             />
                             <textarea
@@ -305,12 +319,12 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                               }}
                               placeholder="Notes (Markdown – autosaved, paste files too)"
                               value={form.notes}
-                              onChange={e =>
+                              onChange={(e) =>
                                 setForm({ ...form, notes: e.target.value })
                               }
-                              onPaste={e =>
-                                pasteFiles(e, md =>
-                                  setForm(f => ({
+                              onPaste={(e) =>
+                                pasteFiles(e, (md) =>
+                                  setForm((f) => ({
                                     ...f,
                                     notes: f.notes + md,
                                   }))
@@ -339,10 +353,16 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     {/* expanded row */}
                     {expId === t.id && (
                       <tr>
-                        <td colSpan={7} style={{ background: "var(--row-alt)" }}>
+                        <td
+                          colSpan={7}
+                          style={{ background: "var(--row-alt)" }}
+                        >
                           {t.notes && editId !== t.id && (
                             <div className="notes-full">
-                              <ReactMarkdown components={mdComponents}>
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={mdComponents}
+                              >
                                 {t.notes}
                               </ReactMarkdown>
                             </div>
@@ -366,7 +386,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {contacts[t.id].map(c => (
+                                  {contacts[t.id].map((c) => (
                                     <tr key={c.id}>
                                       <td>{c.email}</td>
                                       <td>{c.name}</td>
@@ -414,10 +434,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
               >
                 Delete
               </button>
-              <button
-                className="btn-light"
-                onClick={() => setDel(null)}
-              >
+              <button className="btn-light" onClick={() => setDel(null)}>
                 Cancel
               </button>
             </div>
@@ -434,9 +451,9 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         >
           <div
             style={{ position: "absolute", inset: 0 }}
-            onClick={e => {
+            onClick={(e) => {
               const mid = window.innerWidth / 2;
-              setGallery(g => ({
+              setGallery((g) => ({
                 ...g,
                 idx:
                   e.clientX > mid
@@ -448,17 +465,14 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
           <img
             src={gallery.urls[gallery.idx]}
             className="gallery-img"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           />
         </div>
       )}
 
       {/* contacts modal */}
       {contactMod && (
-        <ContactList
-          taskId={contactMod}
-          onClose={() => setContactMod(null)}
-        />
+        <ContactList taskId={contactMod} onClose={() => setContactMod(null)} />
       )}
     </>
   );
