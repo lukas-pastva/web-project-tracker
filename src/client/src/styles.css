@@ -198,3 +198,14 @@ th.sort-desc::after{content:" ▼";font-size:.75em}
 .btn-icon:hover{
   background:var(--accent);color:var(--accent-contr);
 }
+
+/* ───────────────────────── tweaks: subtotals + mode toggle active */
+/* subtotal rows and footer total should respect theme */
+.tasks-table tr.month-subtotal{ background:var(--row-alt); }
+.tasks-table tfoot tr{ background:var(--row-alt); }
+
+/* indicate which mode is selected in header */
+.mode-toggle[aria-pressed="true"]{
+  background:var(--accent);color:var(--accent-contr);
+  border-radius:4px;padding:.1rem .25rem;
+}

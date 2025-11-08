@@ -428,7 +428,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
 
                     {/* month subtotal at the end of a month group (only when sorted by start) */}
                     {endOfMonthGroup && (
-                      <tr style={{ background: "#fafafa" }}>
+                      <tr className="month-subtotal">
                         <td colSpan={5} style={{ textAlign: "right", fontWeight: 600 }}>
                           {fmtMonth(thisMonth)} subtotal
                         </td>
