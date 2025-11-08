@@ -55,6 +55,13 @@ export default function TaskForm({ projectId, onSave, customers, tasks }) {
     setEnd  (toInput(ceil30(now)));
   }, []);
 
+  /* prefill customer with last used value (if empty) */
+  useEffect(() => {
+    if (customer) return;
+    const lastWithCustomer = [...tasks].reverse().find(t => (t.customer ?? "").trim());
+    if (lastWithCustomer?.customer) setCust(lastWithCustomer.customer);
+  }, [tasks, customer]);
+
   /* autofill on customer */
   useEffect(() => {
     if (!customer) return;
