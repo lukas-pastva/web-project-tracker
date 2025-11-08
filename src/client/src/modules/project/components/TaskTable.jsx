@@ -155,6 +155,28 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     [rows]
   );
 
+  /* monthly totals (finished tasks only), by startedAt month */
+  const monthKey = (iso) => {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  };
+
+  const monthSums = useMemo(() => {
+    const sums = new Map();
+    for (const t of rows) {
+      if (!t.startedAt || !t.finishedAt) continue;
+      const key = monthKey(t.startedAt);
+      sums.set(key, (sums.get(key) || 0) + diff(t.startedAt, t.finishedAt));
+    }
+    return sums;
+  }, [rows]);
+
+  const fmtMonth = (key) =>
+    new Date(`${key}-01T00:00:00Z`).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+    });
+
   const hdr = (k) =>
     `sortable${
       sort.key === k ? (sort.asc ? " sort-asc" : " sort-desc") : ""
@@ -178,6 +200,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     <>
       <section className="card">
         <h3>Tasks</h3>
+        {/* monthly summary bar removed in favor of in-table subtotals */}
         {sorted.length === 0 ? (
           <p>
             <em>No tasks yet</em>
@@ -212,7 +235,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((t) => {
+              {sorted.map((t, idx) => {
                 const imgs = imgUrls(t.notes || "");
                 const mdComponents = {
                   img: ({ node, ...props }) => (
@@ -229,6 +252,11 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     />
                   ),
                 };
+
+                const thisMonth = monthKey(t.startedAt);
+                const nextMonth =
+                  idx + 1 < sorted.length ? monthKey(sorted[idx + 1].startedAt) : null;
+                const endOfMonthGroup = sort.key === "startedAt" && thisMonth !== nextMonth;
 
                 return (
                   <React.Fragment key={t.id}>
@@ -395,6 +423,18 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                             </button>
                           </form>
                         </td>
+                      </tr>
+                    )}
+
+                    {/* month subtotal at the end of a month group (only when sorted by start) */}
+                    {endOfMonthGroup && (
+                      <tr style={{ background: "#fafafa" }}>
+                        <td colSpan={5} style={{ textAlign: "right", fontWeight: 600 }}>
+                          {fmtMonth(thisMonth)} subtotal
+                        </td>
+                        <td style={{ fontWeight: 600 }}>{fmtDur(monthSums.get(thisMonth) || 0)}</td>
+                        <td></td>
+                        <td></td>
                       </tr>
                     )}
 
