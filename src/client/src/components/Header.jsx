@@ -91,23 +91,23 @@ export default function Header() {
           Help
         </a>
       </nav>
-      {/* mode toggle: Auto + Dark (single-button) */}
-      <div style={{ display:"flex", gap:".35rem" }}>
+      {/* mode toggle: single button cycles Auto → Light → Dark */}
+      <div>
         <button
           className="mode-toggle"
-          title="Auto (follow system)"
-          aria-pressed={mode === "auto"}
-          onClick={() => changeMode("auto")}
+          title={
+            mode === "auto"
+              ? "Mode: Auto (click for Light)"
+              : mode === "light"
+              ? "Mode: Light (click for Dark)"
+              : "Mode: Dark (click for Auto)"
+          }
+          onClick={() => {
+            const next = mode === "auto" ? "light" : mode === "light" ? "dark" : "auto";
+            changeMode(next);
+          }}
         >
-          🌓
-        </button>
-        <button
-          className="mode-toggle"
-          title="Toggle dark mode"
-          aria-pressed={mode === "dark"}
-          onClick={() => changeMode(mode === "dark" ? "light" : "dark")}
-        >
-          🌙
+          {mode === "auto" ? "🌓" : mode === "light" ? "☀" : "🌙"}
         </button>
       </div>
     </header>
