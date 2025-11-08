@@ -140,7 +140,8 @@ td.notes-full{
 /* mobile tweaks */
 @media(max-width:600px){
   html{font-size:92%}
-  header.mod-header h1{font-size:1.25rem}
+  /* hide big title on small screens to save space */
+  header.mod-header h1{display:none}
   .config-wrap{max-width:100%;}
 }
 

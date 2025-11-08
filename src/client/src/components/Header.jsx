@@ -67,7 +67,7 @@ export default function Header() {
 
   return (
     <header className="mod-header">
-      <h1>Project-Tracker</h1>
+      {location.pathname.startsWith("/config") ? null : <h1>Project-Tracker</h1>}
 
       <nav className="nav-center">
         {projects.map((p) => (
@@ -91,29 +91,21 @@ export default function Header() {
           Help
         </a>
       </nav>
-      {/* mode toggle: auto / light / dark */}
+      {/* mode toggle: Auto + Dark (single-button) */}
       <div style={{ display:"flex", gap:".35rem" }}>
         <button
           className="mode-toggle"
-          title="Auto mode"
+          title="Auto (follow system)"
           aria-pressed={mode === "auto"}
           onClick={() => changeMode("auto")}
         >
-          A
+          🌓
         </button>
         <button
           className="mode-toggle"
-          title="Light mode"
-          aria-pressed={mode === "light"}
-          onClick={() => changeMode("light")}
-        >
-          ☀
-        </button>
-        <button
-          className="mode-toggle"
-          title="Dark mode"
+          title="Toggle dark mode"
           aria-pressed={mode === "dark"}
-          onClick={() => changeMode("dark")}
+          onClick={() => changeMode(mode === "dark" ? "light" : "dark")}
         >
           🌙
         </button>

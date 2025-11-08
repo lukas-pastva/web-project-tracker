@@ -1,18 +1,12 @@
 import React, { useState, useEffect } from "react";
 import Header from "../../components/Header.jsx";
-import {
-  loadConfig,
-  saveConfig,
-  effectiveTheme,
-  effectiveMode,
-} from "../../config.js";
+import { loadConfig, saveConfig, effectiveTheme, effectiveMode } from "../../config.js";
 
 export default function ConfigPage() {
   /* ─── global settings ───────────────────────────────────────── */
   const init = loadConfig();
   const [theme, setTheme] = useState(init.theme ?? "technical");
   const [mode,  setMode]  = useState(init.mode  ?? "auto");
-  const [title, setTitle] = useState(init.appTitle ?? "Project-Tracker");
   const [saved, setSaved] = useState(false);
 
   /* ─── projects list & CRUD ──────────────────────────────────── */
@@ -70,11 +64,7 @@ export default function ConfigPage() {
   }
 
   async function save() {
-    await saveConfig({
-      theme,
-      mode,
-      appTitle: title.trim() || "Project-Tracker",
-    });
+    await saveConfig({ theme, mode });
     document.documentElement.setAttribute("data-theme", effectiveTheme(theme));
     document.documentElement.setAttribute("data-mode",  effectiveMode(mode));
     setSaved(true);
@@ -88,10 +78,6 @@ export default function ConfigPage() {
       <main>
         <section className="card config-wrap" style={{ maxWidth:600 }}>
           <h2>Configuration</h2>
-
-          {/* title -------------------------------------------------- */}
-          <h3>Application title</h3>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} />
 
           {/* theme -------------------------------------------------- */}
           <h3 style={{ marginTop:"1.2rem" }}>Theme</h3>
