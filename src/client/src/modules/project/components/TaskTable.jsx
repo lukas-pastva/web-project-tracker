@@ -145,6 +145,16 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     });
   }, [rows, sort]);
 
+  /* total duration (finished tasks only) */
+  const totalMs = useMemo(
+    () =>
+      rows.reduce(
+        (sum, t) => sum + (t.finishedAt ? diff(t.startedAt, t.finishedAt) : 0),
+        0
+      ),
+    [rows]
+  );
+
   const hdr = (k) =>
     `sortable${
       sort.key === k ? (sort.asc ? " sort-asc" : " sort-desc") : ""
@@ -446,6 +456,16 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                 );
               })}
             </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={5} style={{ textAlign: "right", fontWeight: 600 }}>
+                  Total
+                </td>
+                <td style={{ fontWeight: 600 }}>{fmtDur(totalMs)}</td>
+                <td></td>
+                <td></td>
+              </tr>
+            </tfoot>
           </table>
         )}
       </section>
