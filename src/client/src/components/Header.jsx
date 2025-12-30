@@ -6,8 +6,8 @@ export default function Header() {
   const params    = useParams();
   const location  = useLocation();
   const [projects, setProjects] = useState([]);
-  const [projCustomer, setProjCustomer] = useState({}); // { [projectId]: customer }
-  const [mode, setMode] = useState(storedMode());       // light | dark | auto
+  const [projCustomer, setProjCustomer] = useState({});
+  const [mode, setMode] = useState(storedMode());
 
   const loadProjects = () =>
     fetch("/api/projects")
@@ -22,7 +22,6 @@ export default function Header() {
     return () => window.removeEventListener("projectsUpdated", h);
   }, []);
 
-  /* fetch last-used customer for each project (for colouring) */
   useEffect(() => {
     async function loadCustomers() {
       for (const p of projects) {
@@ -43,13 +42,12 @@ export default function Header() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projects]);
 
-  /* deterministic colour for a given customer */
   function colorForCustomer(name = "") {
     let h = 0;
     for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
     const hue = h % 360;
-    const sat = 65;  // keep vivid but not neon
-    const lig = 42;  // keep dark enough for white contrast
+    const sat = 60;
+    const lig = 45;
     return `hsl(${hue} ${sat}% ${lig}%)`;
   }
 
@@ -65,9 +63,12 @@ export default function Header() {
     }
   }
 
+  const modeIcon = mode === "auto" ? "◐" : mode === "light" ? "○" : "●";
+  const modeLabel = mode === "auto" ? "Auto" : mode === "light" ? "Light" : "Dark";
+
   return (
     <header className="mod-header">
-      {location.pathname.startsWith("/config") ? null : <h1>Project-Tracker</h1>}
+      <h1>Tracker</h1>
 
       <nav className="nav-center">
         {projects.map((p) => (
@@ -84,32 +85,26 @@ export default function Header() {
         <a href="/contacts" className={isActive("/contacts") ? "active" : ""}>
           Contacts
         </a>
-        <a href="/config"   className={isActive("/config")   ? "active" : ""}>
-          Config
+        <a href="/config" className={isActive("/config") ? "active" : ""}>
+          Settings
         </a>
-        <a href="/help"     className={isActive("/help")     ? "active" : ""}>
+        <a href="/help" className={isActive("/help") ? "active" : ""}>
           Help
         </a>
       </nav>
-      {/* mode toggle: single button cycles Auto → Light → Dark */}
-      <div>
-        <button
-          className="mode-toggle"
-          title={
-            mode === "auto"
-              ? "Mode: Auto (click for Light)"
-              : mode === "light"
-              ? "Mode: Light (click for Dark)"
-              : "Mode: Dark (click for Auto)"
-          }
-          onClick={() => {
-            const next = mode === "auto" ? "light" : mode === "light" ? "dark" : "auto";
-            changeMode(next);
-          }}
-        >
-          {mode === "auto" ? "🌓" : mode === "light" ? "☀" : "🌙"}
-        </button>
-      </div>
+
+      <button
+        className="mode-toggle"
+        title={`Theme: ${modeLabel}`}
+        aria-label={`Current theme: ${modeLabel}. Click to change.`}
+        onClick={() => {
+          const next = mode === "auto" ? "light" : mode === "light" ? "dark" : "auto";
+          changeMode(next);
+        }}
+      >
+        <span style={{ marginRight: "0.35rem" }}>{modeIcon}</span>
+        <span style={{ fontSize: "0.75rem", fontWeight: 500 }}>{modeLabel}</span>
+      </button>
     </header>
   );
 }
