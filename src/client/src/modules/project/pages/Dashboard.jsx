@@ -30,26 +30,31 @@ export default function ProjectDashboard() {
   return (
     <>
       <Header />
-      {err && <p style={{ color:"#c00", padding:"0 1rem" }}>{err}</p>}
 
       <main>
-        {/* subtle, icon-only project download */}
-        <div style={{ textAlign:"right", padding:"0 1rem .3rem" }}>
+        {err && (
+          <div className="error-message">
+            {err}
+          </div>
+        )}
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+          <TaskForm
+            projectId={pid}
+            onSave={save}
+            customers={customers}
+            tasks={tasks}
+          />
           <a
-            className="btn-icon"
+            className="btn-light"
             href={`/api/projects/${pid}/images.zip`}
-            title="Download project assets (images, notes, contacts)"
+            title="Download project assets"
+            style={{ fontSize: "0.875rem" }}
           >
-            ⬇︎
+            Export
           </a>
         </div>
 
-        <TaskForm
-          projectId={pid}
-          onSave={save}
-          customers={customers}
-          tasks={tasks}
-        />
         <TaskTable
           rows={tasks}
           onUpdate={update}

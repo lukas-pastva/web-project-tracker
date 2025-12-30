@@ -199,12 +199,16 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
   return (
     <>
       <section className="card">
-        <h3>Tasks</h3>
-        {/* monthly summary bar removed in favor of in-table subtotals */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+          <h3 style={{ margin: 0 }}>Tasks</h3>
+          <span className="text-muted" style={{ fontSize: "0.875rem" }}>
+            {rows.length} {rows.length === 1 ? "task" : "tasks"} &middot; {fmtDur(totalMs)} total
+          </span>
+        </div>
         {sorted.length === 0 ? (
-          <p>
-            <em>No tasks yet</em>
-          </p>
+          <div className="empty-state">
+            <p>No tasks yet. Create your first task above.</p>
+          </div>
         ) : (
           <table className="tasks-table">
             <thead>
@@ -325,102 +329,113 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
 
                     {/* inline edit */}
                     {editId === t.id && (
-                      <tr>
+                      <tr className="edit-row">
                         <td colSpan={8}>
                           <form
-                            style={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: ".4rem",
-                            }}
+                            className="inline-edit-form"
                             onKeyDown={(e) => {
                               if (e.key === "Escape") setEditId(null);
                             }}
                           >
-                            <label
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: ".25rem",
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={form.tracked}
+                            <div className="form-row">
+                              <div className="form-group" style={{ flex: 2 }}>
+                                <label>Task Name</label>
+                                <input
+                                  value={form.name}
+                                  onChange={(e) =>
+                                    setForm({ ...form, name: e.target.value })
+                                  }
+                                  required
+                                />
+                              </div>
+                              <div className="form-group" style={{ flex: 1 }}>
+                                <label>Customer</label>
+                                <input
+                                  value={form.customer}
+                                  onChange={(e) =>
+                                    setForm({ ...form, customer: e.target.value })
+                                  }
+                                />
+                              </div>
+                              <label className="checkbox-label">
+                                <input
+                                  type="checkbox"
+                                  checked={form.tracked}
+                                  onChange={(e) =>
+                                    setForm({
+                                      ...form,
+                                      tracked: e.target.checked,
+                                    })
+                                  }
+                                />
+                                <span>Tracked</span>
+                              </label>
+                            </div>
+
+                            <div className="form-row">
+                              <div className="form-group">
+                                <label>Start Time</label>
+                                <input
+                                  type="datetime-local"
+                                  value={form.startedAt}
+                                  onChange={(e) =>
+                                    setForm({ ...form, startedAt: e.target.value })
+                                  }
+                                  required
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label>End Time</label>
+                                <input
+                                  type="datetime-local"
+                                  value={form.finishedAt}
+                                  onChange={(e) =>
+                                    setForm({
+                                      ...form,
+                                      finishedAt: e.target.value,
+                                    })
+                                  }
+                                />
+                              </div>
+                            </div>
+
+                            <div className="form-group">
+                              <label>Notes</label>
+                              <textarea
+                                rows={16}
+                                placeholder="Add notes in Markdown. Paste screenshots or files directly."
+                                value={form.notes}
                                 onChange={(e) =>
-                                  setForm({
-                                    ...form,
-                                    tracked: e.target.checked,
-                                  })
+                                  setForm({ ...form, notes: e.target.value })
                                 }
-                              />{" "}
-                              Tracked
-                            </label>
-                            <input
-                              value={form.name}
-                              onChange={(e) =>
-                                setForm({ ...form, name: e.target.value })
-                              }
-                              required
-                            />
-                            <input
-                              value={form.customer}
-                              onChange={(e) =>
-                                setForm({ ...form, customer: e.target.value })
-                              }
-                            />
-                            <input
-                              type="datetime-local"
-                              value={form.startedAt}
-                              onChange={(e) =>
-                                setForm({ ...form, startedAt: e.target.value })
-                              }
-                              required
-                            />
-                            <input
-                              type="datetime-local"
-                              value={form.finishedAt}
-                              onChange={(e) =>
-                                setForm({
-                                  ...form,
-                                  finishedAt: e.target.value,
-                                })
-                              }
-                            />
-                            <textarea
-                              rows={24}
-                              style={{
-                                flex: "1 1 100%",
-                                fontSize: "1.05rem",
-                              }}
-                              placeholder="Notes…"
-                              value={form.notes}
-                              onChange={(e) =>
-                                setForm({ ...form, notes: e.target.value })
-                              }
-                              onPaste={(e) =>
-                                pasteFiles(e, (md) =>
-                                  setForm((f) => ({
-                                    ...f,
-                                    notes: f.notes + md,
-                                  }))
-                                )
-                              }
-                            />
-                            <button
-                              type="button"
-                              className="btn-light"
-                              onClick={() => setContactMod(t.id)}
-                            >
-                              Manage contacts…
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-light"
-                              onClick={() => setEditId(null)}
-                            >
-                              Close
-                            </button>
+                                onPaste={(e) =>
+                                  pasteFiles(e, (md) =>
+                                    setForm((f) => ({
+                                      ...f,
+                                      notes: f.notes + md,
+                                    }))
+                                  )
+                                }
+                              />
+                            </div>
+
+                            <div className="form-actions">
+                              <button
+                                type="button"
+                                className="btn-light"
+                                onClick={() => setContactMod(t.id)}
+                              >
+                                Manage Contacts
+                              </button>
+                              <div style={{ flex: 1 }} />
+                              <button
+                                type="button"
+                                className="btn-light"
+                                onClick={() => setEditId(null)}
+                              >
+                                Close
+                              </button>
+                            </div>
                           </form>
                         </td>
                       </tr>

@@ -7,48 +7,87 @@ export default function HelpPage() {
       <Header />
 
       <main>
-        <section className="card" style={{ maxWidth: "850px" }}>
-          <h2 style={{ marginTop: 0 }}>Welcome to Web-Project 👶🍼</h2>
+        <section className="card help-content" style={{ maxWidth: 800 }}>
+          <h2>Getting Started</h2>
 
-          <p>
-            Web-Project is a tiny <strong>React + Express</strong> app that lets
-            new parents quickly log feeds, visualise intake, and track weight –
-            all in a single container you can self-host anywhere.
+          <p className="text-muted">
+            Project Tracker helps you manage projects, track time spent on tasks,
+            and organize contacts. It's a self-hosted solution built with React
+            and Express.
           </p>
 
-          <h3>Pages at a glance</h3>
-          <ul>
-            <li><strong>Today</strong> – add feeds; stacked bar shows <em>types + total</em>.</li>
-            <li><strong>All&nbsp;days</strong> – full timeline since birth.</li>
-            <li><strong>Weight</strong> – log &amp; visualise daily weight.</li>
-            <li><strong>Config</strong> – theme, baby details, hidden feed types.</li>
-            <li><strong>Help</strong> – you’re here!</li>
-          </ul>
+          <div className="help-section">
+            <h3>Features Overview</h3>
+            <div className="feature-grid">
+              <div className="feature-item">
+                <strong>Projects</strong>
+                <span className="text-muted">Create and manage multiple projects</span>
+              </div>
+              <div className="feature-item">
+                <strong>Task Tracking</strong>
+                <span className="text-muted">Log tasks with start/end times and notes</span>
+              </div>
+              <div className="feature-item">
+                <strong>Time Summary</strong>
+                <span className="text-muted">Monthly and total duration calculations</span>
+              </div>
+              <div className="feature-item">
+                <strong>Contacts</strong>
+                <span className="text-muted">Associate contacts with tasks</span>
+              </div>
+              <div className="feature-item">
+                <strong>File Attachments</strong>
+                <span className="text-muted">Paste screenshots directly into notes</span>
+              </div>
+              <div className="feature-item">
+                <strong>Export</strong>
+                <span className="text-muted">Download all data and assets</span>
+              </div>
+            </div>
+          </div>
 
-          <h3>Keyboard shortcuts</h3>
-          <table>
-            <thead><tr><th>Key</th><th>Action</th></tr></thead>
-            <tbody>
-              <tr><td><kbd>T</kbd></td><td>Today</td></tr>
-              <tr><td><kbd>A</kbd></td><td>All&nbsp;days</td></tr>
-              <tr><td><kbd>C</kbd></td><td>Config</td></tr>
-              <tr><td><kbd>W</kbd></td><td>Weight</td></tr>
-              <tr><td><kbd>H</kbd></td><td>Help</td></tr>
-            </tbody>
-          </table>
+          <div className="help-section">
+            <h3>Tips</h3>
+            <ul className="help-list">
+              <li>
+                <strong>Quick task entry:</strong> Click "+ New Task" to expand
+                the form. The customer field auto-completes from previous entries.
+              </li>
+              <li>
+                <strong>Paste screenshots:</strong> In any notes field, paste images
+                directly from your clipboard. They'll be uploaded and embedded automatically.
+              </li>
+              <li>
+                <strong>Inline editing:</strong> Click any task row to expand it,
+                then click "Edit" to modify details.
+              </li>
+              <li>
+                <strong>Sorting:</strong> Click column headers to sort the task list.
+                Monthly subtotals appear when sorted by start date.
+              </li>
+              <li>
+                <strong>Export data:</strong> Use the "Export" button to download
+                all project assets including images, notes, and contacts.
+              </li>
+            </ul>
+          </div>
 
-          <h3>FAQ</h3>
-          <p><strong>❓ How do I change the baby’s name or birth date?</strong><br/>
-             Go to <em>Config</em>, update the fields and click <em>Save</em>.
-             Changes are stored in the database instantly.</p>
+          <div className="help-section">
+            <h3>Keyboard Navigation</h3>
+            <p className="text-muted">
+              In image galleries, use arrow keys to navigate and Escape to close.
+              Press Escape while editing to close the edit form.
+            </p>
+          </div>
 
-          <p><strong>❓ Where is my data kept?</strong><br/>
-             Everything lives in a single MariaDB / MySQL database. The Docker
-             image ships with migrations that auto-create the tables on first
-             run.</p>
-
-          <p><strong>Need more help?</strong> Open an issue on GitHub – PRs and
-             questions welcome 🙂</p>
+          <div className="help-section">
+            <h3>Data Storage</h3>
+            <p className="text-muted">
+              All data is stored in a MariaDB database. The application runs in a
+              Docker container and can be self-hosted anywhere. Database migrations
+              run automatically on first startup.
+            </p>
+          </div>
         </section>
       </main>
     </>

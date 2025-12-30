@@ -70,89 +70,178 @@ export default function ContactsPage() {
     <>
       <Header />
 
-      <main style={{padding:"1rem"}}>
-        <section className="card" style={{maxWidth:1000}}>
-          <h2 style={{marginTop:0}}>Contacts</h2>
-          {err && <p style={{color:"#c00"}}>{err}</p>}
+      <main>
+        <section className="card" style={{ maxWidth: 1100 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+            <h2 style={{ margin: 0 }}>Contacts</h2>
+            <span className="text-muted" style={{ fontSize: "0.875rem" }}>
+              {filtered.length} {filtered.length === 1 ? "contact" : "contacts"}
+            </span>
+          </div>
+
+          {err && <div className="error-message">{err}</div>}
 
           {/* ─ Filter bar ─ */}
-          <div style={{display:"flex",gap:".6rem",flexWrap:"wrap"}}>
-            {["name","email","position","project","customer"].map(k=>(
-              <input key={k} placeholder={k[0].toUpperCase()+k.slice(1)}
-                     value={q[k]} onChange={e=>setQ({...q,[k]:e.target.value})}/>
+          <div className="filter-bar">
+            {["name", "email", "position", "project", "customer"].map(k => (
+              <input
+                key={k}
+                placeholder={`Filter by ${k}`}
+                value={q[k]}
+                onChange={e => setQ({ ...q, [k]: e.target.value })}
+                style={{ minWidth: 140 }}
+              />
             ))}
           </div>
 
           {/* ─ Add new contact ─ */}
-          <details style={{marginTop:"1rem"}}>
-            <summary style={{cursor:"pointer",fontWeight:600}}>Add new contact</summary>
-            <form onSubmit={create} style={{marginTop:".8rem",display:"flex",gap:".6rem",flexWrap:"wrap"}}>
-              {/* project dropdown */}
-              <select value={newRow.projectId}
-                      onChange={(e)=>{setNew({...newRow,projectId:e.target.value,taskId:""});loadTasks(e.target.value);}}
-                      required>
-                <option value="">Project…</option>
-                {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+          <details style={{ marginTop: "1.25rem" }}>
+            <summary>+ Add Contact</summary>
+            <form onSubmit={create} className="contact-form">
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Project</label>
+                  <select
+                    value={newRow.projectId}
+                    onChange={(e) => {
+                      setNew({ ...newRow, projectId: e.target.value, taskId: "" });
+                      loadTasks(e.target.value);
+                    }}
+                    required
+                  >
+                    <option value="">Select project...</option>
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
 
-              {/* task dropdown – populated once project chosen */}
-              <select value={newRow.taskId}
-                      onChange={(e)=>setNew({...newRow,taskId:e.target.value})}
-                      required
-                      disabled={!newRow.projectId}>
-                <option value="">Task…</option>
-                {(tasks[newRow.projectId]||[]).map(t=>
-                  <option key={t.id} value={t.id}>{t.name} ({t.customer||"—"})</option>
-                )}
-              </select>
+                <div className="form-group">
+                  <label>Task</label>
+                  <select
+                    value={newRow.taskId}
+                    onChange={(e) => setNew({ ...newRow, taskId: e.target.value })}
+                    required
+                    disabled={!newRow.projectId}
+                  >
+                    <option value="">Select task...</option>
+                    {(tasks[newRow.projectId] || []).map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.customer || "—"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-              <input placeholder="Name"     style={{flex:1}} value={newRow.name}
-                     onChange={(e)=>setNew({...newRow,name:e.target.value})} required/>
-              <input placeholder="Email"    style={{flex:1}} value={newRow.email}
-                     onChange={(e)=>setNew({...newRow,email:e.target.value})} required/>
-              <input placeholder="Position" style={{flex:1}} value={newRow.position}
-                     onChange={(e)=>setNew({...newRow,position:e.target.value})}/>
-              <button className="btn" style={{flex:"0 0 100%"}}>Create</button>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Name</label>
+                  <input
+                    placeholder="Contact name"
+                    value={newRow.name}
+                    onChange={(e) => setNew({ ...newRow, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Email</label>
+                  <input
+                    type="email"
+                    placeholder="email@example.com"
+                    value={newRow.email}
+                    onChange={(e) => setNew({ ...newRow, email: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Position</label>
+                  <input
+                    placeholder="Job title (optional)"
+                    value={newRow.position}
+                    onChange={(e) => setNew({ ...newRow, position: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button className="btn">Add Contact</button>
+              </div>
             </form>
           </details>
 
           {/* ─ Table ─ */}
-          <div style={{overflowX:"auto",marginTop:"1rem"}}>
-            {filtered.length===0 ? (
-              <p><em>No contacts found</em></p>
+          <div style={{ overflowX: "auto", marginTop: "1.25rem" }}>
+            {filtered.length === 0 ? (
+              <div className="empty-state">
+                <p>No contacts found</p>
+              </div>
             ) : (
               <table className="tasks-table">
                 <thead>
                   <tr>
-                    <th>Name</th><th>Email</th><th>Position</th>
-                    <th>Project</th><th>Customer</th><th></th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Position</th>
+                    <th>Project</th>
+                    <th>Customer</th>
+                    <th style={{ width: 120 }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(c=>(
-                    editId===c.id ? (
-                      /* inline edit row */
+                  {filtered.map(c => (
+                    editId === c.id ? (
                       <tr key={c.id}>
-                        <td><input value={editRow.name}
-                                   onChange={(e)=>setEditRow({...editRow,name:e.target.value})} required/></td>
-                        <td><input value={editRow.email}
-                                   onChange={(e)=>setEditRow({...editRow,email:e.target.value})} required/></td>
-                        <td><input value={editRow.position||""}
-                                   onChange={(e)=>setEditRow({...editRow,position:e.target.value})}/></td>
-                        <td>{c.project}</td><td>{c.customer||"—"}</td>
-                        <td style={{whiteSpace:"nowrap"}}>
-                          <button className="btn"       onClick={()=>saveEdit(c.id)}>Save</button>{" "}
-                          <button className="btn-light" onClick={()=>setEditId(null)}>Cancel</button>
+                        <td>
+                          <input
+                            value={editRow.name}
+                            onChange={(e) => setEditRow({ ...editRow, name: e.target.value })}
+                            required
+                          />
+                        </td>
+                        <td>
+                          <input
+                            value={editRow.email}
+                            onChange={(e) => setEditRow({ ...editRow, email: e.target.value })}
+                            required
+                          />
+                        </td>
+                        <td>
+                          <input
+                            value={editRow.position || ""}
+                            onChange={(e) => setEditRow({ ...editRow, position: e.target.value })}
+                          />
+                        </td>
+                        <td className="text-muted">{c.project}</td>
+                        <td className="text-muted">{c.customer || "—"}</td>
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          <button className="btn" onClick={() => saveEdit(c.id)}>Save</button>
+                          {" "}
+                          <button className="btn-light" onClick={() => setEditId(null)}>Cancel</button>
                         </td>
                       </tr>
                     ) : (
-                      /* normal row */
                       <tr key={c.id}>
-                        <td>{c.name}</td><td>{c.email}</td><td>{c.position||"—"}</td>
-                        <td>{c.project}</td><td>{c.customer||"—"}</td>
-                        <td style={{whiteSpace:"nowrap"}}>
-                          <button className="btn-light" onClick={()=>{setEditId(c.id);setEditRow(c);}}>Edit</button>{" "}
-                          <button className="btn-light" onClick={()=>del(c.id)}>×</button>
+                        <td style={{ fontWeight: 500 }}>{c.name}</td>
+                        <td>{c.email}</td>
+                        <td className="text-muted">{c.position || "—"}</td>
+                        <td className="text-muted">{c.project}</td>
+                        <td className="text-muted">{c.customer || "—"}</td>
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          <button
+                            className="btn-light"
+                            onClick={() => { setEditId(c.id); setEditRow(c); }}
+                          >
+                            Edit
+                          </button>
+                          {" "}
+                          <button
+                            className="btn-icon"
+                            onClick={() => del(c.id)}
+                            title="Delete contact"
+                          >
+                            ×
+                          </button>
                         </td>
                       </tr>
                     )

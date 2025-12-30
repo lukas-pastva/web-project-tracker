@@ -76,142 +76,160 @@ export default function ConfigPage() {
     <>
       <Header />
       <main>
-        <section className="card config-wrap" style={{ maxWidth:600 }}>
-          <h2>Configuration</h2>
+        <section className="card config-wrap" style={{ maxWidth: 640 }}>
+          <h2 style={{ marginBottom: "1.5rem" }}>Settings</h2>
 
           {/* theme -------------------------------------------------- */}
-          <h3 style={{ marginTop:"1.2rem" }}>Theme</h3>
-          <label style={{ marginRight:"1rem" }}>
-            <input
-              type="radio"
-              name="theme"
-              value="technical"
-              checked={theme === "technical"}
-              onChange={() => setTheme("technical")}
-            /> Technical
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="theme"
-              value="jira-like"
-              checked={theme === "jira-like"}
-              onChange={() => setTheme("jira-like")}
-            /> Jira-like
-          </label>
+          <div className="config-section">
+            <h3>Appearance</h3>
+            <div className="config-option">
+              <span className="config-label">Theme</span>
+              <div className="option-group">
+                <label>
+                  <input
+                    type="radio"
+                    name="theme"
+                    value="technical"
+                    checked={theme === "technical"}
+                    onChange={() => setTheme("technical")}
+                  />
+                  <span>Technical</span>
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="theme"
+                    value="jira-like"
+                    checked={theme === "jira-like"}
+                    onChange={() => setTheme("jira-like")}
+                  />
+                  <span>Jira-like</span>
+                </label>
+              </div>
+            </div>
 
-          {/* colour-scheme ----------------------------------------- */}
-          <h3 style={{ marginTop:"1.2rem" }}>Colour-scheme mode</h3>
-          {["light","dark","auto"].map((m) => (
-            <label key={m} style={{ marginRight:"1rem" }}>
-              <input
-                type="radio"
-                name="mode"
-                value={m}
-                checked={mode === m}
-                onChange={() => setMode(m)}
-              /> {m}
-            </label>
-          ))}
+            <div className="config-option">
+              <span className="config-label">Color Mode</span>
+              <div className="option-group">
+                {[
+                  { value: "auto", label: "Auto" },
+                  { value: "light", label: "Light" },
+                  { value: "dark", label: "Dark" },
+                ].map((m) => (
+                  <label key={m.value}>
+                    <input
+                      type="radio"
+                      name="mode"
+                      value={m.value}
+                      checked={mode === m.value}
+                      onChange={() => setMode(m.value)}
+                    />
+                    <span>{m.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
 
           {/* projects list ----------------------------------------- */}
-          <h3 style={{ marginTop:"1.2rem" }}>Projects</h3>
-          {projects.length === 0 ? (
-            <p><em>No projects yet</em></p>
-          ) : (
-            <ul style={{ listStyle:"none", paddingLeft:0 }}>
-              {projects.map((p) => (
-                <li
-                  key={p.id}
-                  style={{
-                    display      :"flex",
-                    alignItems   :"center",
-                    gap          :".4rem",
-                    marginBottom :".35rem",
-                  }}
-                >
-                  {editingId === p.id ? (
-                    <>
-                      <input
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        style={{ flex:1 }}
-                        autoFocus
-                      />
-                      <button
-                        className="btn"
-                        disabled={!editName.trim()}
-                        onClick={() => renameProject(p.id, editName)}
-                      >
-                        Save
-                      </button>
-                      <button
-                        className="btn-light"
-                        onClick={() => setEditingId(null)}
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <span style={{ flex:1 }}>{p.name}</span>
-                      <button
-                        className="btn-light"
-                        onClick={() => {
-                          setEditingId(p.id);
-                          setEditName(p.name);
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="btn-light"
-                        onClick={() => setDeleteId(p.id)}
-                      >
-                        ×
-                      </button>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {/* add new project --------------------------------------- */}
-          <div style={{ display:"flex", gap:".6rem" }}>
-            <input
-              value={newProj}
-              onChange={(e) => setNewProj(e.target.value)}
-              placeholder="New project name"
-              style={{ flex:1 }}
-            />
-            <button
-              className="btn"
-              onClick={addProject}
-              disabled={!newProj.trim()}
-            >
-              Add
-            </button>
-          </div>
-
-          {/* save global config ------------------------------------ */}
-          <div style={{ marginTop:"1.5rem" }}>
-            <button className="btn" onClick={save}>Save config</button>
-            {saved && (
-              <span className="msg-success" style={{ marginLeft:".6rem" }}>
-                ✓ Saved
-              </span>
+          <div className="config-section">
+            <h3>Projects</h3>
+            {projects.length === 0 ? (
+              <p className="text-muted" style={{ margin: "1rem 0" }}>
+                No projects created yet. Add your first project below.
+              </p>
+            ) : (
+              <ul className="project-list">
+                {projects.map((p) => (
+                  <li key={p.id} className="project-item">
+                    {editingId === p.id ? (
+                      <>
+                        <input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          style={{ flex: 1 }}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && editName.trim()) {
+                              renameProject(p.id, editName);
+                            }
+                            if (e.key === "Escape") setEditingId(null);
+                          }}
+                        />
+                        <button
+                          className="btn"
+                          disabled={!editName.trim()}
+                          onClick={() => renameProject(p.id, editName)}
+                        >
+                          Save
+                        </button>
+                        <button
+                          className="btn-light"
+                          onClick={() => setEditingId(null)}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ flex: 1, fontWeight: 500 }}>{p.name}</span>
+                        <button
+                          className="btn-light"
+                          onClick={() => {
+                            setEditingId(p.id);
+                            setEditName(p.name);
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="btn-icon"
+                          onClick={() => setDeleteId(p.id)}
+                          title="Delete project"
+                        >
+                          ×
+                        </button>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
             )}
+
+            {/* add new project --------------------------------------- */}
+            <div className="form-row" style={{ marginTop: "1rem" }}>
+              <input
+                value={newProj}
+                onChange={(e) => setNewProj(e.target.value)}
+                placeholder="New project name"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newProj.trim()) addProject();
+                }}
+              />
+              <button
+                className="btn"
+                onClick={addProject}
+                disabled={!newProj.trim()}
+                style={{ flex: "0 0 auto" }}
+              >
+                Add Project
+              </button>
+            </div>
           </div>
 
-          {/* global assets download -------------------------------- */}
-          <div style={{ textAlign:"right", marginTop:".8rem" }}>
+          {/* save & actions ----------------------------------------- */}
+          <div className="config-actions">
+            <button className="btn" onClick={save}>
+              Save Settings
+            </button>
+            {saved && <span className="msg-success">Saved</span>}
             <a
-              className="btn-icon"
+              className="btn-light"
               href="/api/images.zip"
-              title="Download ALL assets (images, notes, contacts)"
+              title="Download all project assets"
+              style={{ marginLeft: "auto" }}
             >
-              ⬇︎
+              Export All Data
             </a>
           </div>
         </section>
@@ -221,18 +239,18 @@ export default function ConfigPage() {
       {deleteId !== null && (
         <div className="modal-backdrop">
           <div className="modal-box">
-            <p style={{ marginTop:0 }}>
-              Delete this project?<br />
-              <small>All its tasks will be removed.</small>
+            <h3 style={{ marginBottom: "0.5rem" }}>Delete Project?</h3>
+            <p style={{ color: "var(--fg-muted)", fontSize: "0.9rem" }}>
+              This will permanently remove the project and all its tasks.
             </p>
             <div style={{
-              marginTop:"1rem",
-              display:"flex",
-              gap:".6rem",
-              justifyContent:"center",
+              marginTop: "1.25rem",
+              display: "flex",
+              gap: "0.75rem",
+              justifyContent: "center",
             }}>
               <button
-                className="btn"
+                className="btn btn-danger"
                 onClick={async () => {
                   await confirmDeleteProject(deleteId);
                   setDeleteId(null);
@@ -240,10 +258,7 @@ export default function ConfigPage() {
               >
                 Delete
               </button>
-              <button
-                className="btn-light"
-                onClick={() => setDeleteId(null)}
-              >
+              <button className="btn-light" onClick={() => setDeleteId(null)}>
                 Cancel
               </button>
             </div>
