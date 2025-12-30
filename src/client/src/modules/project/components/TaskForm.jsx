@@ -90,69 +90,85 @@ export default function TaskForm({ projectId, onSave, customers, tasks }) {
   }
 
   return (
-    <details>
-      <summary
-        style={{ cursor: "pointer", fontWeight: 600, marginBottom: ".6rem" }}
-        onClick={() => setTimeout(() => firstRef.current?.focus(), 0)}
-      >
-        ➕ Add new task
+    <details className="task-form-details">
+      <summary onClick={() => setTimeout(() => firstRef.current?.focus(), 0)}>
+        + New Task
       </summary>
 
-      <section className="card" style={{ maxWidth: 600 }}>
+      <section className="card" style={{ maxWidth: 640, marginTop: "0.75rem" }}>
         <form
           onSubmit={submit}
-          style={{ display: "flex", flexDirection: "column", gap: ".6rem" }}
+          style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
         >
-          <input
-            ref={firstRef}
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="Task name"
-            required
-          />
+          <div className="form-row">
+            <div className="form-group" style={{ flex: 2 }}>
+              <label htmlFor="task-name">Task Name</label>
+              <input
+                id="task-name"
+                ref={firstRef}
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Enter task name"
+                required
+              />
+            </div>
 
-          <input
-            list="customers"
-            value={customer}
-            onChange={e => setCust(e.target.value)}
-            placeholder="Customer"
-          />
-          <datalist id="customers">
-            {customers.map(c => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label htmlFor="task-customer">Customer</label>
+              <input
+                id="task-customer"
+                list="customers"
+                value={customer}
+                onChange={e => setCust(e.target.value)}
+                placeholder="Select or enter"
+              />
+              <datalist id="customers">
+                {customers.map(c => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </div>
+          </div>
 
-          <label>
-            Start&nbsp;
-            <input
-              type="datetime-local"
-              value={start}
-              onChange={e => setStart(e.target.value)}
-              required
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="task-start">Start Time</label>
+              <input
+                id="task-start"
+                type="datetime-local"
+                value={start}
+                onChange={e => setStart(e.target.value)}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="task-end">End Time</label>
+              <input
+                id="task-end"
+                type="datetime-local"
+                value={end}
+                onChange={e => setEnd(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="task-notes">Notes</label>
+            <textarea
+              id="task-notes"
+              rows={10}
+              placeholder="Add notes in Markdown. You can paste screenshots or files directly."
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              onPaste={e => pasteFiles(e, md => setNotes(n => n + md))}
             />
-          </label>
-          <label>
-            End&nbsp;
-            <input
-              type="datetime-local"
-              value={end}
-              onChange={e => setEnd(e.target.value)}
-            />
-          </label>
+          </div>
 
-          <textarea
-            rows={12}
-            style={{ flex: "1 1 100%", fontSize: "1.05rem" }}
-            placeholder="Notes (Markdown – paste screenshots or any file)"
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            onPaste={e => pasteFiles(e, md => setNotes(n => n + md))}
-          />
-
-          <button className="btn" disabled={!name || !start}>
-            Save
-          </button>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
+            <button className="btn" disabled={!name || !start}>
+              Save Task
+            </button>
+          </div>
         </form>
       </section>
     </details>
