@@ -137,24 +137,29 @@ app.get("/api/tasks/:tid/images.zip", async (req, res) => {
 app.get("/api/projects/:pid/images.zip", async (req, res) => {
   console.log("🔥🔥🔥 HIT /api/projects/:pid/images.zip - pid:", req.params.pid);
   try {
+    const project = await Project.findByPk(req.params.pid);
+    if (!project)
+      return res.status(404).json({ error: "Project not found" });
+
     const tasks = await Task.findAll({
       where   : { projectId: req.params.pid },
       include : [{ model: Contact, attributes: ["email", "name", "position"] }],
       order   : [["id", "ASC"]],
     });
     if (tasks.length === 0)
-      return res.status(404).json({ error: "Project not found or empty" });
+      return res.status(404).json({ error: "Project is empty" });
 
+    const safeProjectName = (project.name || "unknown").replace(/[^a-zA-Z0-9-_]/g, "_");
     let hasAnything = false;
 
-    console.log("📦 Starting ZIP export for project", req.params.pid);
+    console.log("📦 Starting ZIP export for project", req.params.pid, project.name);
     console.log("📦 Found tasks:", tasks.map(t => ({ id: t.id, customer: t.customer, name: t.name })));
 
     streamZip(res, (zip) => {
       tasks.forEach((t) => {
         const safeName = (t.customer || "unknown").replace(/[^a-zA-Z0-9-_]/g, "_");
-        const pref = `${t.id}-${safeName}`;
-        console.log(`📦 Task ${t.id}: customer="${t.customer}", safeName="${safeName}", pref="${pref}"`);
+        const pref = `${safeProjectName}-${t.id}-${safeName}`;
+        console.log(`📦 Task ${t.id}: customer="${t.customer}", pref="${pref}"`);
 
         /* notes */
         if (t.notes) {
@@ -215,7 +220,7 @@ app.get("/api/images.zip", async (_req, res) => {
 
         (project.tasks || []).forEach((t) => {
           const safeName = (t.customer || "unknown").replace(/[^a-zA-Z0-9-_]/g, "_");
-          const pref = `${safeProjectName}/${t.id}-${safeName}`;
+          const pref = `${safeProjectName}-${t.id}-${safeName}`;
           console.log(`📦 Global export: project="${project.name}", task=${t.id}, pref="${pref}"`);
 
           /* notes */
