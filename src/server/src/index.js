@@ -74,6 +74,9 @@ function csv(rows, headers) {
 function streamZip(res, pushFn, zipName) {
   res.setHeader("Content-Type", "application/zip");
   res.setHeader("Content-Disposition", `attachment; filename="${zipName}"`);
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
 
   const archive = archiver("zip", { zlib: { level: 9 } });
   archive.on("error", (err) => {
