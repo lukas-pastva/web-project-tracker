@@ -125,7 +125,7 @@ app.get("/api/tasks/:tid/images.zip", async (req, res) => {
           { name: "contacts.csv" }
         );
       }
-    }, `task-${task.id}-assets.zip`);
+    }, `${task.id}-${(task.customer || "unknown").replace(/[^a-zA-Z0-9-_]/g, "_")}-assets.zip`);
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
@@ -148,7 +148,8 @@ app.get("/api/projects/:pid/images.zip", async (req, res) => {
 
     streamZip(res, (zip) => {
       tasks.forEach((t) => {
-        const pref = `task-${t.id}`;
+        const safeName = (t.customer || "unknown").replace(/[^a-zA-Z0-9-_]/g, "_");
+        const pref = `${t.id}-${safeName}`;
 
         /* notes */
         if (t.notes) {
