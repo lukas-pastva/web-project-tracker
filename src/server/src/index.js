@@ -125,7 +125,7 @@ app.get("/api/tasks/:tid/images.zip", async (req, res) => {
           { name: "contacts.csv" }
         );
       }
-    }, `${task.id}-${(task.customer || "unknown").replace(/[^a-zA-Z0-9-_]/g, "_")}-assets.zip`);
+    }, `${task.id}-${(task.customer || "unknown").replace(/[^a-zA-Z0-9-_]/g, "_")}-${Date.now()}.zip`);
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
@@ -187,7 +187,7 @@ app.get("/api/projects/:pid/images.zip", async (req, res) => {
           appendImage(zip, f, pref);            // 👈 prefix keeps them nested
         });
       });
-    }, `project-${req.params.pid}-assets.zip`);
+    }, `project-${req.params.pid}-${Date.now()}.zip`);
 
     if (!hasAnything)
       return res.status(404).json({ error: "No assets for this project" });
@@ -250,7 +250,7 @@ app.get("/api/images.zip", async (_req, res) => {
           });
         });
       });
-    }, "all-assets.zip");
+    }, `all-assets-${Date.now()}.zip`);
 
     if (!hasAnything)
       return res.status(404).json({ error: "No assets found" });
