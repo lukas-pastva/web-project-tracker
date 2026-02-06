@@ -133,8 +133,9 @@ app.get("/api/tasks/:tid/images.zip", async (req, res) => {
 });
 
 /* ─── project-level archive ────────────────────────────────────── */
-/*  FIX #2 – images live **inside** their own “task-{id}/” folder   */
+/*  FIX #2 – images live **inside** their own "task-{id}/" folder   */
 app.get("/api/projects/:pid/images.zip", async (req, res) => {
+  console.log("🔥🔥🔥 HIT /api/projects/:pid/images.zip - pid:", req.params.pid);
   try {
     const tasks = await Task.findAll({
       where   : { projectId: req.params.pid },
