@@ -146,10 +146,14 @@ app.get("/api/projects/:pid/images.zip", async (req, res) => {
 
     let hasAnything = false;
 
+    console.log("📦 Starting ZIP export for project", req.params.pid);
+    console.log("📦 Found tasks:", tasks.map(t => ({ id: t.id, customer: t.customer, name: t.name })));
+
     streamZip(res, (zip) => {
       tasks.forEach((t) => {
         const safeName = (t.customer || "unknown").replace(/[^a-zA-Z0-9-_]/g, "_");
         const pref = `${t.id}-${safeName}`;
+        console.log(`📦 Task ${t.id}: customer="${t.customer}", safeName="${safeName}", pref="${pref}"`);
 
         /* notes */
         if (t.notes) {
