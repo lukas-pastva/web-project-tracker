@@ -194,41 +194,61 @@ app.get("/api/projects/:pid/images.zip", async (req, res) => {
 
 /* ─── global archive (all uploads + contacts) ─────────────────── */
 app.get("/api/images.zip", async (_req, res) => {
+  console.log("🔥🔥🔥 HIT /api/images.zip (global export)");
   try {
-    const imgFiles = fs
-      .readdirSync(uploadDir, { withFileTypes: true })
-      .filter((d) => d.isFile())
-      .map((d) => d.name);
-
-    const contacts = await Contact.findAll({
-      include: [
-        {
-          model      : Task,
-          include    : [{ model: Project }],
-        },
-      ],
+    const projects = await Project.findAll({
+      include: [{
+        model: Task,
+        include: [{ model: Contact, attributes: ["email", "name", "position"] }],
+      }],
+      order: [["id", "ASC"], [Task, "id", "ASC"]],
     });
 
-    if (imgFiles.length === 0 && contacts.length === 0)
-      return res.status(404).json({ error: "No assets found" });
+    if (projects.length === 0)
+      return res.status(404).json({ error: "No projects found" });
+
+    let hasAnything = false;
 
     streamZip(res, (zip) => {
-      imgFiles.forEach((f) => appendImage(zip, f));   // images really included
+      projects.forEach((project) => {
+        const safeProjectName = (project.name || "unknown").replace(/[^a-zA-Z0-9-_]/g, "_");
 
-      if (contacts.length) {
-        const rows = contacts.map((c) => [
-          c.email,
-          c.name,
-          c.position || "",
-          c.task?.customer || "",
-          c.task?.project?.name || "",
-        ]);
-        zip.append(
-          csv(rows, ["email", "name", "position", "customer", "project"]),
-          { name: "contacts.csv" }
-        );
-      }
+        (project.tasks || []).forEach((t) => {
+          const safeName = (t.customer || "unknown").replace(/[^a-zA-Z0-9-_]/g, "_");
+          const pref = `${safeProjectName}/${t.id}-${safeName}`;
+          console.log(`📦 Global export: project="${project.name}", task=${t.id}, pref="${pref}"`);
+
+          /* notes */
+          if (t.notes) {
+            hasAnything = true;
+            zip.append(t.notes, { name: `${pref}/notes.md` });
+          }
+
+          /* contacts */
+          if (t.contacts.length) {
+            hasAnything = true;
+            const rows = t.contacts.map((c) => [
+              c.email,
+              c.name,
+              c.position || "",
+            ]);
+            zip.append(
+              csv(rows, ["email", "name", "position"]),
+              { name: `${pref}/contacts.csv` }
+            );
+          }
+
+          /* images */
+          uploadsInMarkdown(t.notes).forEach((f) => {
+            hasAnything = true;
+            appendImage(zip, f, pref);
+          });
+        });
+      });
     }, "all-assets.zip");
+
+    if (!hasAnything)
+      return res.status(404).json({ error: "No assets found" });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
