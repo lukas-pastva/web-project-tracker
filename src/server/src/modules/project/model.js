@@ -5,8 +5,9 @@ import db from "../../db.js";
 export const Project = db.define(
   "project",
   {
-    id  : { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    name: { type: DataTypes.STRING(128), allowNull: false, unique: true },
+    id       : { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
+    name     : { type: DataTypes.STRING(128), allowNull: false, unique: true },
+    completed: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   },
   { timestamps: true }
 );

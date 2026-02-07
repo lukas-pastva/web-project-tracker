@@ -163,20 +163,34 @@ header.mod-header nav a {
   display: inline-flex;
   align-items: center;
   padding: var(--space-sm) var(--space-md);
-  border: 1px solid rgba(255,255,255,0.2);
   border-radius: var(--radius-md);
-  background: transparent;
-  color: rgba(255,255,255,0.85);
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
   transition: all var(--transition-fast);
+  /* Default style for non-project links (Contacts, Settings, Help) */
+  border: 1px solid rgba(255,255,255,0.2);
+  background: transparent;
+  color: rgba(255,255,255,0.85);
+}
+
+/* Project links with --accent get colored backgrounds */
+header.mod-header nav a[style*="--accent"] {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  border: 1px solid var(--accent);
+  color: #fff;
 }
 
 header.mod-header nav a:hover {
   background: rgba(255,255,255,0.1);
   border-color: rgba(255,255,255,0.3);
   color: #fff;
+}
+
+header.mod-header nav a[style*="--accent"]:hover {
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  border-color: var(--accent);
+  filter: brightness(1.1);
 }
 
 header.mod-header nav a.active,
@@ -913,6 +927,38 @@ th.sort-desc::after {
 
 .project-item span {
   flex: 1;
+}
+
+.toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  transition: all var(--transition-fast);
+}
+
+.toggle-label:hover {
+  background: var(--row-hover);
+}
+
+.toggle-label input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.toggle-label .toggle-text {
+  color: var(--fg-muted);
+  flex: none;
+  min-width: 5.5em;
+}
+
+.toggle-label input:checked + .toggle-text {
+  color: var(--accent);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

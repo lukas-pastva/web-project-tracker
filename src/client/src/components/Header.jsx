@@ -71,12 +71,12 @@ export default function Header() {
       <h1>Tracker</h1>
 
       <nav className="nav-center">
-        {projects.map((p) => (
+        {projects.filter((p) => !p.completed).map((p) => (
           <a
             key={p.id}
             href={`/project/${p.id}`}
             className={Number(params.projectId) === p.id ? "active" : ""}
-            style={projCustomer[p.id] ? { "--accent": colorForCustomer(projCustomer[p.id]) } : undefined}
+            style={{ "--accent": colorForCustomer(projCustomer[p.id] || p.name) }}
           >
             {p.name}
           </a>

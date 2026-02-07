@@ -55,6 +55,18 @@ export default function ConfigPage() {
     }
   }
 
+  async function toggleCompleted(id, completed) {
+    const r = await fetch(`/api/projects/${id}`, {
+      method : "PUT",
+      headers: { "Content-Type":"application/json" },
+      body   : JSON.stringify({ completed }),
+    });
+    if (r.ok) {
+      reloadProj();
+      window.dispatchEvent(new Event("projectsUpdated"));
+    }
+  }
+
   async function confirmDeleteProject(id) {
     const r = await fetch(`/api/projects/${id}`, { method:"DELETE" });
     if (r.ok || r.status === 204) {
@@ -172,7 +184,24 @@ export default function ConfigPage() {
                       </>
                     ) : (
                       <>
-                        <span style={{ flex: 1, fontWeight: 500 }}>{p.name}</span>
+                        <span style={{
+                          flex: 1,
+                          fontWeight: 500,
+                          textDecoration: p.completed ? "line-through" : "none",
+                          opacity: p.completed ? 0.6 : 1
+                        }}>
+                          {p.name}
+                        </span>
+                        <label className="toggle-label" title={p.completed ? "Mark as active" : "Mark as completed"}>
+                          <input
+                            type="checkbox"
+                            checked={p.completed}
+                            onChange={() => toggleCompleted(p.id, !p.completed)}
+                          />
+                          <span className="toggle-text">
+                            {p.completed ? "Completed" : "Active"}
+                          </span>
+                        </label>
                         <button
                           className="btn-light"
                           onClick={() => {

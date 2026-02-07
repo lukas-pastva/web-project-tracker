@@ -23,11 +23,23 @@ r.put("/api/projects/:id", async (req, res) => {
   const p = await Project.findByPk(req.params.id);
   if (!p) return res.status(404).end();
 
-  const { name } = req.body;
-  if (!name?.trim()) return res.status(400).json({ error: "name required" });
+  const { name, completed } = req.body;
+  const updates = {};
+
+  if (name !== undefined) {
+    if (!name?.trim()) return res.status(400).json({ error: "name required" });
+    updates.name = name.trim();
+  }
+  if (completed !== undefined) {
+    updates.completed = Boolean(completed);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: "no valid fields to update" });
+  }
 
   try {
-    await p.update({ name: name.trim() });
+    await p.update(updates);
     res.json(p);
   } catch (e) {
     res.status(400).json({ error: e.message });
