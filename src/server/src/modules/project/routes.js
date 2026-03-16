@@ -72,6 +72,7 @@ r.post("/api/projects/:pid/tasks", async (req, res) => {
     finishedAt,
     notes,
     tracked = false,
+    amountEur,
   } = req.body;
 
   if (!name || !startedAt)
@@ -86,6 +87,7 @@ r.post("/api/projects/:pid/tasks", async (req, res) => {
       finishedAt,
       notes,
       tracked: Boolean(tracked),
+      amountEur: amountEur != null ? amountEur : null,
     })
   );
 });

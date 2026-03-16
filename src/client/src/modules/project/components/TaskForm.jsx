@@ -40,11 +40,13 @@ async function pasteFiles(e, append) {
 
 /* ──────────────────────────────────────────────────────────────── */
 export default function TaskForm({ projectId, onSave, customers, tasks }) {
-  const [name,     setName]   = useState("");
-  const [customer, setCust]   = useState("");
-  const [start,    setStart]  = useState("");
-  const [end,      setEnd]    = useState("");
-  const [notes,    setNotes]  = useState("");
+  const [name,      setName]    = useState("");
+  const [customer,  setCust]    = useState("");
+  const [start,     setStart]   = useState("");
+  const [end,       setEnd]     = useState("");
+  const [notes,     setNotes]   = useState("");
+  const [euroMode,  setEuroMode]= useState(false);
+  const [amount,    setAmount]  = useState("");
 
   const firstRef = useRef(null);
 
@@ -74,15 +76,17 @@ export default function TaskForm({ projectId, onSave, customers, tasks }) {
 
   async function submit(e) {
     e.preventDefault();
-    await onSave(projectId, {
+    const payload = {
       name,
       customer,
-      startedAt  : fromInput(start),
-      finishedAt : end ? fromInput(end) : null,
+      startedAt  : euroMode ? new Date().toISOString() : fromInput(start),
+      finishedAt : euroMode ? null : (end ? fromInput(end) : null),
       notes      : notes.trim() || null,
-    });
+      amountEur  : euroMode && amount ? parseFloat(amount) : null,
+    };
+    await onSave(projectId, payload);
     /* reset form */
-    setName(""); setCust(""); setNotes("");
+    setName(""); setCust(""); setNotes(""); setAmount("");
     const now = new Date();
     setStart(toInput(floor30(now)));
     setEnd  (toInput(ceil30(now)));
@@ -100,7 +104,7 @@ export default function TaskForm({ projectId, onSave, customers, tasks }) {
           onSubmit={submit}
           style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
         >
-          <div className="form-row">
+          <div className="form-row" style={{ alignItems: "center" }}>
             <div className="form-group" style={{ flex: 2 }}>
               <label htmlFor="task-name">Task Name</label>
               <input
@@ -128,29 +132,56 @@ export default function TaskForm({ projectId, onSave, customers, tasks }) {
                 ))}
               </datalist>
             </div>
+
+            <label className="checkbox-label" style={{ marginTop: "1.4rem" }}>
+              <input
+                type="checkbox"
+                checked={euroMode}
+                onChange={e => setEuroMode(e.target.checked)}
+              />
+              <span>EUR</span>
+            </label>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="task-start">Start Time</label>
-              <input
-                id="task-start"
-                type="datetime-local"
-                value={start}
-                onChange={e => setStart(e.target.value)}
-                required
-              />
+          {euroMode ? (
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="task-amount">Amount (EUR)</label>
+                <input
+                  id="task-amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  required
+                />
+              </div>
             </div>
-            <div className="form-group">
-              <label htmlFor="task-end">End Time</label>
-              <input
-                id="task-end"
-                type="datetime-local"
-                value={end}
-                onChange={e => setEnd(e.target.value)}
-              />
+          ) : (
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="task-start">Start Time</label>
+                <input
+                  id="task-start"
+                  type="datetime-local"
+                  value={start}
+                  onChange={e => setStart(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="task-end">End Time</label>
+                <input
+                  id="task-end"
+                  type="datetime-local"
+                  value={end}
+                  onChange={e => setEnd(e.target.value)}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="task-notes">Notes</label>
@@ -165,7 +196,7 @@ export default function TaskForm({ projectId, onSave, customers, tasks }) {
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
-            <button className="btn" disabled={!name || !start}>
+            <button className="btn" disabled={!name || (!euroMode && !start) || (euroMode && !amount)}>
               Save Task
             </button>
           </div>

@@ -12,6 +12,11 @@ const fmt = (iso) =>
     hour12: false,
   }).format(new Date(iso));
 
+const fmtDate = (iso) =>
+  new Intl.DateTimeFormat(undefined, {
+    dateStyle: "short",
+  }).format(new Date(iso));
+
 const isoToLocal = (iso) =>
   iso
     ? new Date(
@@ -30,6 +35,8 @@ const fmtDur = (ms) =>
     : `${Math.floor(ms / 3_600_000)}h ${(Math.floor(ms / 60_000) % 60)
         .toString()
         .padStart(2, "0")}m`;
+const fmtEur = (v) => v != null ? `${Number(v).toFixed(2)} €` : "—";
+const isEuro = (t) => t.amountEur != null;
 
 /* pull Markdown image URLs (for gallery) */
 function imgUrls(md = "") {
@@ -116,8 +123,9 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         name      : form.name,
         customer  : form.customer,
         startedAt : toIso(form.startedAt),
-        finishedAt: form.finishedAt ? toIso(form.finishedAt) : null,
+        finishedAt: form.euroMode ? null : (form.finishedAt ? toIso(form.finishedAt) : null),
         notes     : form.notes.trim() || null,
+        amountEur : form.euroMode && form.amountEur ? parseFloat(form.amountEur) : null,
       });
     }, 800);
     return () => clearTimeout(saveTimer.current);
@@ -132,8 +140,8 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     const dir = sort.asc ? 1 : -1;
     return [...rows].sort((a, b) => {
       if (sort.key === "duration") {
-        const dx = diff(a.startedAt, a.finishedAt);
-        const dy = diff(b.startedAt, b.finishedAt);
+        const valOf = (t) => isEuro(t) ? Number(t.amountEur) : (t.finishedAt ? diff(t.startedAt, t.finishedAt) : 0);
+        const dx = valOf(a), dy = valOf(b);
         return dx === dy ? 0 : dx > dy ? dir : -dir;
       }
       const x = a[sort.key],
@@ -145,13 +153,19 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
     });
   }, [rows, sort]);
 
-  /* total duration (finished tasks only) */
+  /* total duration (finished time-tasks only) */
   const totalMs = useMemo(
     () =>
       rows.reduce(
-        (sum, t) => sum + (t.finishedAt ? diff(t.startedAt, t.finishedAt) : 0),
+        (sum, t) => sum + (!isEuro(t) && t.finishedAt ? diff(t.startedAt, t.finishedAt) : 0),
         0
       ),
+    [rows]
+  );
+
+  /* total EUR */
+  const totalEur = useMemo(
+    () => rows.reduce((sum, t) => sum + (isEuro(t) ? Number(t.amountEur) : 0), 0),
     [rows]
   );
 
@@ -164,9 +178,19 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
   const monthSums = useMemo(() => {
     const sums = new Map();
     for (const t of rows) {
-      if (!t.startedAt || !t.finishedAt) continue;
+      if (!t.startedAt || isEuro(t) || !t.finishedAt) continue;
       const key = monthKey(t.startedAt);
       sums.set(key, (sums.get(key) || 0) + diff(t.startedAt, t.finishedAt));
+    }
+    return sums;
+  }, [rows]);
+
+  const monthEurSums = useMemo(() => {
+    const sums = new Map();
+    for (const t of rows) {
+      if (!t.startedAt || !isEuro(t)) continue;
+      const key = monthKey(t.startedAt);
+      sums.set(key, (sums.get(key) || 0) + Number(t.amountEur));
     }
     return sums;
   }, [rows]);
@@ -191,6 +215,8 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
       startedAt : isoToLocal(t.startedAt),
       finishedAt: t.finishedAt ? isoToLocal(t.finishedAt) : "",
       notes     : t.notes ?? "",
+      amountEur : t.amountEur != null ? String(t.amountEur) : "",
+      euroMode  : isEuro(t),
     });
     setEditId(t.id);
   };
@@ -202,7 +228,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <h3 style={{ margin: 0 }}>Tasks</h3>
           <span className="text-muted" style={{ fontSize: "0.875rem" }}>
-            {rows.length} {rows.length === 1 ? "task" : "tasks"} &middot; {fmtDur(totalMs)} total
+            {rows.length} {rows.length === 1 ? "task" : "tasks"} &middot; {fmtDur(totalMs)} total{totalEur > 0 && <> &middot; {fmtEur(totalEur)}</>}
           </span>
         </div>
         {sorted.length === 0 ? (
@@ -283,12 +309,14 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                       </td>
                       <td>{t.name}</td>
                       <td>{t.customer || "—"}</td>
-                      <td>{fmt(t.startedAt)}</td>
-                      <td>{t.finishedAt ? fmt(t.finishedAt) : "—"}</td>
+                      <td>{isEuro(t) ? fmtDate(t.startedAt) : fmt(t.startedAt)}</td>
+                      <td>{isEuro(t) ? "—" : (t.finishedAt ? fmt(t.finishedAt) : "—")}</td>
                       <td>
-                        {t.finishedAt
-                          ? fmtDur(diff(t.startedAt, t.finishedAt))
-                          : "—"}
+                        {isEuro(t)
+                          ? fmtEur(t.amountEur)
+                          : t.finishedAt
+                            ? fmtDur(diff(t.startedAt, t.finishedAt))
+                            : "—"}
                       </td>
                       <td className="notes-snippet">
                         {t.notes
@@ -370,34 +398,65 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                                 />
                                 <span>Tracked</span>
                               </label>
-                            </div>
-
-                            <div className="form-row">
-                              <div className="form-group">
-                                <label>Start Time</label>
+                              <label className="checkbox-label">
                                 <input
-                                  type="datetime-local"
-                                  value={form.startedAt}
-                                  onChange={(e) =>
-                                    setForm({ ...form, startedAt: e.target.value })
-                                  }
-                                  required
-                                />
-                              </div>
-                              <div className="form-group">
-                                <label>End Time</label>
-                                <input
-                                  type="datetime-local"
-                                  value={form.finishedAt}
+                                  type="checkbox"
+                                  checked={form.euroMode}
                                   onChange={(e) =>
                                     setForm({
                                       ...form,
-                                      finishedAt: e.target.value,
+                                      euroMode: e.target.checked,
                                     })
                                   }
                                 />
-                              </div>
+                                <span>EUR</span>
+                              </label>
                             </div>
+
+                            {form.euroMode ? (
+                              <div className="form-row">
+                                <div className="form-group">
+                                  <label>Amount (EUR)</label>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={form.amountEur}
+                                    onChange={(e) =>
+                                      setForm({ ...form, amountEur: e.target.value })
+                                    }
+                                    placeholder="0.00"
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="form-row">
+                                <div className="form-group">
+                                  <label>Start Time</label>
+                                  <input
+                                    type="datetime-local"
+                                    value={form.startedAt}
+                                    onChange={(e) =>
+                                      setForm({ ...form, startedAt: e.target.value })
+                                    }
+                                    required
+                                  />
+                                </div>
+                                <div className="form-group">
+                                  <label>End Time</label>
+                                  <input
+                                    type="datetime-local"
+                                    value={form.finishedAt}
+                                    onChange={(e) =>
+                                      setForm({
+                                        ...form,
+                                        finishedAt: e.target.value,
+                                      })
+                                    }
+                                  />
+                                </div>
+                              </div>
+                            )}
 
                             <div className="form-group">
                               <label>Notes</label>
@@ -447,7 +506,12 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                         <td colSpan={5} style={{ textAlign: "right", fontWeight: 600 }}>
                           {fmtMonth(thisMonth)} subtotal
                         </td>
-                        <td style={{ fontWeight: 600 }}>{fmtDur(monthSums.get(thisMonth) || 0)}</td>
+                        <td style={{ fontWeight: 600 }}>
+                          {fmtDur(monthSums.get(thisMonth) || 0)}
+                          {(monthEurSums.get(thisMonth) || 0) > 0 && (
+                            <><br/><span style={{ color: "var(--accent)" }}>{fmtEur(monthEurSums.get(thisMonth))}</span></>
+                          )}
+                        </td>
                         <td></td>
                         <td></td>
                       </tr>
@@ -516,7 +580,10 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                 <td colSpan={5} style={{ textAlign: "right", fontWeight: 600 }}>
                   Total
                 </td>
-                <td style={{ fontWeight: 600 }}>{fmtDur(totalMs)}</td>
+                <td style={{ fontWeight: 600 }}>
+                  {fmtDur(totalMs)}
+                  {totalEur > 0 && <><br/><span style={{ color: "var(--accent)" }}>{fmtEur(totalEur)}</span></>}
+                </td>
                 <td></td>
                 <td></td>
               </tr>

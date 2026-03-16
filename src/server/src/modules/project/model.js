@@ -23,6 +23,7 @@ export const Task = db.define(
     finishedAt : { type: DataTypes.DATE },
     notes      : { type: DataTypes.TEXT },
     tracked    : { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    amountEur  : { type: DataTypes.DECIMAL(10, 2), allowNull: true, defaultValue: null },
   },
   { timestamps: false }
 );
