@@ -84,6 +84,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
   const [delId,  setDel]        = useState(null);
   const [gallery,setGallery]    = useState(null);
   const [contactMod,setContactMod] = useState(null);
+  const [search, setSearch]     = useState("");
 
   /* contacts cache */
   const [contacts, setContacts] = useState({});
@@ -152,6 +153,18 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
       return x > y ? dir : -dir;
     });
   }, [rows, sort]);
+
+  /* search filter */
+  const filtered = useMemo(() => {
+    if (!search.trim()) return sorted;
+    const q = search.toLowerCase();
+    return sorted.filter(
+      (t) =>
+        (t.name && t.name.toLowerCase().includes(q)) ||
+        (t.customer && t.customer.toLowerCase().includes(q)) ||
+        (t.notes && t.notes.toLowerCase().includes(q))
+    );
+  }, [sorted, search]);
 
   /* total duration (finished time-tasks only) */
   const totalMs = useMemo(
@@ -227,13 +240,22 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
       <section className="card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <h3 style={{ margin: 0 }}>Tasks</h3>
-          <span className="text-muted" style={{ fontSize: "0.875rem" }}>
-            {rows.length} {rows.length === 1 ? "task" : "tasks"} &middot; {fmtDur(totalMs)} total{totalEur > 0 && <> &middot; {fmtEur(totalEur)}</>}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <input
+              type="text"
+              placeholder="Search tasks…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ padding: "0.3rem 0.6rem", fontSize: "0.875rem", width: "200px" }}
+            />
+            <span className="text-muted" style={{ fontSize: "0.875rem", whiteSpace: "nowrap" }}>
+              {filtered.length}/{rows.length} {rows.length === 1 ? "task" : "tasks"} &middot; {fmtDur(totalMs)} total{totalEur > 0 && <> &middot; {fmtEur(totalEur)}</>}
+            </span>
+          </div>
         </div>
-        {sorted.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="empty-state">
-            <p>No tasks yet. Create your first task above.</p>
+            <p>{search ? "No tasks match your search." : "No tasks yet. Create your first task above."}</p>
           </div>
         ) : (
           <table className="tasks-table">
@@ -265,7 +287,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((t, idx) => {
+              {filtered.map((t, idx) => {
                 const imgs = imgUrls(t.notes || "");
                 const mdComponents = {
                   img: ({ node, ...props }) => (
@@ -285,7 +307,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
 
                 const thisMonth = monthKey(t.startedAt);
                 const nextMonth =
-                  idx + 1 < sorted.length ? monthKey(sorted[idx + 1].startedAt) : null;
+                  idx + 1 < filtered.length ? monthKey(filtered[idx + 1].startedAt) : null;
                 const endOfMonthGroup = sort.key === "startedAt" && thisMonth !== nextMonth;
 
                 return (
