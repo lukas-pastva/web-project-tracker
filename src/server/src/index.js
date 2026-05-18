@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import dotenv            from "dotenv";
 import multer            from "multer";
 import archiver          from "archiver";
+import ExcelJS           from "exceljs";
 
 import projectRoutes   from "./modules/project/routes.js";
 import { syncProject } from "./modules/project/seed.js";
@@ -260,6 +261,186 @@ app.get("/api/images.zip", async (_req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
+  }
+});
+
+/* ─── Excel export (per project) ──────────────────────────────── */
+app.get("/api/projects/:pid/export.xlsx", async (req, res) => {
+  try {
+    const project = await Project.findByPk(req.params.pid);
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
+    const tasks = await Task.findAll({
+      where: { projectId: req.params.pid },
+      order: [["startedAt", "ASC"]],
+    });
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "Project Tracker";
+    wb.created = new Date();
+
+    const ws = wb.addWorksheet(project.name.slice(0, 31));
+
+    /* ── colours ── */
+    const accentFill   = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2563EB" } };
+    const altFill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+    const subtotalFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDBEAFE" } };
+    const totalFill    = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E40AF" } };
+    const whiteFontBold = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+    const darkBold      = { bold: true, size: 11 };
+    const thinBorder    = {
+      top: { style: "thin", color: { argb: "FFD1D5DB" } },
+      bottom: { style: "thin", color: { argb: "FFD1D5DB" } },
+      left: { style: "thin", color: { argb: "FFD1D5DB" } },
+      right: { style: "thin", color: { argb: "FFD1D5DB" } },
+    };
+
+    /* ── columns ── */
+    ws.columns = [
+      { header: "Tracked",  key: "tracked",  width: 10 },
+      { header: "Name",     key: "name",     width: 30 },
+      { header: "Customer", key: "customer", width: 20 },
+      { header: "Start",    key: "start",    width: 18 },
+      { header: "End",      key: "end",      width: 18 },
+      { header: "Duration", key: "duration", width: 14 },
+      { header: "EUR",      key: "eur",      width: 12 },
+      { header: "Notes",    key: "notes",    width: 40 },
+    ];
+
+    /* ── header style ── */
+    const headerRow = ws.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.fill = accentFill;
+      cell.font = whiteFontBold;
+      cell.border = thinBorder;
+      cell.alignment = { vertical: "middle" };
+    });
+    headerRow.height = 24;
+
+    /* ── helpers ── */
+    const fmtDur = (ms) =>
+      ms == null ? "" : `${Math.floor(ms / 3_600_000)}h ${String(Math.floor(ms / 60_000) % 60).padStart(2, "0")}m`;
+    const monthKey = (iso) => {
+      const d = new Date(iso);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    };
+    const fmtMonth = (key) =>
+      new Date(`${key}-01T00:00:00Z`).toLocaleDateString("en", { year: "numeric", month: "short" });
+
+    /* ── month buckets ── */
+    const monthMs  = new Map();
+    const monthEur = new Map();
+    for (const t of tasks) {
+      if (!t.startedAt) continue;
+      const mk = monthKey(t.startedAt);
+      if (t.amountEur != null) {
+        monthEur.set(mk, (monthEur.get(mk) || 0) + Number(t.amountEur));
+      } else if (t.finishedAt) {
+        monthMs.set(mk, (monthMs.get(mk) || 0) + (new Date(t.finishedAt) - new Date(t.startedAt)));
+      }
+    }
+
+    /* ── data rows ── */
+    let totalMs  = 0;
+    let totalEur = 0;
+    let rowIdx   = 1; // 1-based, row 1 is header
+
+    for (let i = 0; i < tasks.length; i++) {
+      const t  = tasks[i];
+      const isEuro = t.amountEur != null;
+      const durMs  = !isEuro && t.finishedAt ? new Date(t.finishedAt) - new Date(t.startedAt) : null;
+
+      if (!isEuro && durMs) totalMs += durMs;
+      if (isEuro) totalEur += Number(t.amountEur);
+
+      const row = ws.addRow({
+        tracked:  t.tracked ? "Yes" : "",
+        name:     t.name,
+        customer: t.customer || "",
+        start:    t.startedAt ? new Date(t.startedAt) : "",
+        end:      !isEuro && t.finishedAt ? new Date(t.finishedAt) : "",
+        duration: isEuro ? "" : (durMs ? fmtDur(durMs) : ""),
+        eur:      isEuro ? Number(t.amountEur) : "",
+        notes:    t.notes || "",
+      });
+      rowIdx++;
+
+      /* date format */
+      if (t.startedAt) row.getCell("start").numFmt = isEuro ? "DD/MM/YYYY" : "DD/MM/YYYY HH:mm";
+      if (!isEuro && t.finishedAt) row.getCell("end").numFmt = "DD/MM/YYYY HH:mm";
+      if (isEuro) row.getCell("eur").numFmt = '#,##0.00 "€"';
+
+      /* alternating rows */
+      const isAlt = rowIdx % 2 === 0;
+      row.eachCell((cell) => {
+        if (isAlt) cell.fill = altFill;
+        cell.border = thinBorder;
+        cell.alignment = { vertical: "middle", wrapText: cell.col === 8 };
+      });
+
+      /* month subtotal row */
+      const thisMonth = t.startedAt ? monthKey(t.startedAt) : null;
+      const nextMonth = i + 1 < tasks.length && tasks[i + 1].startedAt ? monthKey(tasks[i + 1].startedAt) : null;
+
+      if (thisMonth && thisMonth !== nextMonth) {
+        const subRow = ws.addRow({
+          tracked: "",
+          name: "",
+          customer: "",
+          start: "",
+          end: `${fmtMonth(thisMonth)} subtotal`,
+          duration: fmtDur(monthMs.get(thisMonth) || 0),
+          eur: monthEur.get(thisMonth) || "",
+          notes: "",
+        });
+        rowIdx++;
+        if (monthEur.get(thisMonth)) subRow.getCell("eur").numFmt = '#,##0.00 "€"';
+        subRow.eachCell((cell) => {
+          cell.fill = subtotalFill;
+          cell.font = darkBold;
+          cell.border = thinBorder;
+          cell.alignment = { vertical: "middle" };
+        });
+      }
+    }
+
+    /* ── total row ── */
+    const totRow = ws.addRow({
+      tracked: "",
+      name: "",
+      customer: "",
+      start: "",
+      end: "TOTAL",
+      duration: fmtDur(totalMs),
+      eur: totalEur || "",
+      notes: "",
+    });
+    if (totalEur) totRow.getCell("eur").numFmt = '#,##0.00 "€"';
+    totRow.eachCell((cell) => {
+      cell.fill = totalFill;
+      cell.font = whiteFontBold;
+      cell.border = thinBorder;
+      cell.alignment = { vertical: "middle" };
+    });
+    totRow.height = 26;
+
+    /* ── autoFilter ── */
+    ws.autoFilter = { from: "A1", to: `H${rowIdx + 1}` };
+
+    /* ── freeze header ── */
+    ws.views = [{ state: "frozen", ySplit: 1 }];
+
+    /* ── send ── */
+    const safeName = (project.name || "project").replace(/[^a-zA-Z0-9-_]/g, "_");
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}.xlsx"`);
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (e) {
+    console.error(e);
+    if (!res.headersSent) res.status(500).json({ error: e.message });
   }
 });
 

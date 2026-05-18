@@ -45,14 +45,24 @@ export default function ProjectDashboard() {
             customers={customers}
             tasks={tasks}
           />
-          <a
-            className="btn-light"
-            href={`/api/projects/${pid}/images.zip`}
-            title="Download project assets"
-            style={{ fontSize: "0.875rem" }}
-          >
-            Export
-          </a>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <a
+              className="btn-light"
+              href={`/api/projects/${pid}/export.xlsx`}
+              title="Download Excel report"
+              style={{ fontSize: "0.875rem" }}
+            >
+              Excel
+            </a>
+            <a
+              className="btn-light"
+              href={`/api/projects/${pid}/images.zip`}
+              title="Download project assets"
+              style={{ fontSize: "0.875rem" }}
+            >
+              Export
+            </a>
+          </div>
         </div>
 
         <TaskTable
