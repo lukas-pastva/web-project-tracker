@@ -56,6 +56,7 @@ export default function ProjectDashboard() {
         </div>
 
         <TaskTable
+          projectId={pid}
           rows={tasks}
           onUpdate={update}
           onDelete={del}

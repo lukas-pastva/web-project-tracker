@@ -77,7 +77,7 @@ async function pasteFiles(e, append) {
 }
 
 /* ───────── component ───────── */
-export default function TaskTable({ rows, onUpdate, onDelete }) {
+export default function TaskTable({ projectId, rows, onUpdate, onDelete }) {
   const [editId, setEditId]     = useState(null);
   const [form,   setForm]       = useState({});
   const [expId,  setExp]        = useState(null);
@@ -85,6 +85,16 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
   const [gallery,setGallery]    = useState(null);
   const [contactMod,setContactMod] = useState(null);
   const [search, setSearch]     = useState("");
+  const [showSubtotals, setShowSubtotals] = useState(() => {
+    const stored = localStorage.getItem(`subtotals-${projectId}`);
+    return stored === null ? true : stored === "1";
+  });
+  const toggleSubtotals = () => {
+    setShowSubtotals((v) => {
+      localStorage.setItem(`subtotals-${projectId}`, v ? "0" : "1");
+      return !v;
+    });
+  };
 
   /* contacts cache */
   const [contacts, setContacts] = useState({});
@@ -241,6 +251,14 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <h3 style={{ margin: 0 }}>Tasks</h3>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <label className="checkbox-label" style={{ fontSize: "0.875rem" }}>
+              <input
+                type="checkbox"
+                checked={showSubtotals}
+                onChange={toggleSubtotals}
+              />
+              <span>Subtotals</span>
+            </label>
             <input
               type="text"
               placeholder="Search tasks…"
@@ -523,7 +541,7 @@ export default function TaskTable({ rows, onUpdate, onDelete }) {
                     )}
 
                     {/* month subtotal at the end of a month group (only when sorted by start) */}
-                    {endOfMonthGroup && (
+                    {showSubtotals && endOfMonthGroup && (
                       <tr className="month-subtotal">
                         <td colSpan={5} style={{ textAlign: "right", fontWeight: 600 }}>
                           {fmtMonth(thisMonth)} subtotal
