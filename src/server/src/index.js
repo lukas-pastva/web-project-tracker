@@ -275,6 +275,8 @@ app.get("/api/projects/:pid/export.xlsx", async (req, res) => {
       order: [["startedAt", "ASC"]],
     });
 
+    const showSubtotals = req.query.subtotals !== "0";
+
     const wb = new ExcelJS.Workbook();
     wb.creator = "Project Tracker";
     wb.created = new Date();
@@ -382,7 +384,7 @@ app.get("/api/projects/:pid/export.xlsx", async (req, res) => {
       const thisMonth = t.startedAt ? monthKey(t.startedAt) : null;
       const nextMonth = i + 1 < tasks.length && tasks[i + 1].startedAt ? monthKey(tasks[i + 1].startedAt) : null;
 
-      if (thisMonth && thisMonth !== nextMonth) {
+      if (showSubtotals && thisMonth && thisMonth !== nextMonth) {
         const subRow = ws.addRow({
           tracked: "",
           name: "",

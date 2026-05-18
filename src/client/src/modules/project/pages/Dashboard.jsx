@@ -51,6 +51,12 @@ export default function ProjectDashboard() {
               href={`/api/projects/${pid}/export.xlsx`}
               title="Download Excel report"
               style={{ fontSize: "0.875rem" }}
+              onClick={(e) => {
+                e.preventDefault();
+                const sub = localStorage.getItem(`subtotals-${pid}`);
+                const show = sub === null ? "1" : sub;
+                window.location.href = `/api/projects/${pid}/export.xlsx?subtotals=${show}`;
+              }}
             >
               Excel
             </a>
